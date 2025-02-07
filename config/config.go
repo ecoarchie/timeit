@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
@@ -48,7 +47,6 @@ func NewConfig() (*Config, error) {
 		fmt.Println("Error loading .env file")
 	}
 
-	fmt.Println("APP_NAME:", os.Getenv("APP_NAME"))
 	err = cleanenv.ReadEnv(cfg)
 	if err != nil {
 		fmt.Println("error reading env")

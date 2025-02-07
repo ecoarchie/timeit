@@ -9,6 +9,7 @@ import (
 	"github.com/ecoarchie/timeit/config"
 	"github.com/ecoarchie/timeit/pkg/httpserver"
 	"github.com/ecoarchie/timeit/pkg/logger"
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -16,6 +17,10 @@ func Run(cfg *config.Config) {
 	logger := logger.New(cfg.Log.Level)
 
 	router := chi.NewRouter()
+	router.Use(middleware.Heartbeat("/ping"))
+	// router.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("Hello World!"))
+	// })
 	httpServer := httpserver.New(router, httpserver.Port(cfg.HTTP.Port))
 
 	// Waiting signal
