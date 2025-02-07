@@ -1,6 +1,12 @@
 package config
 
-import "github.com/ilyakaznacheev/cleanenv"
+import (
+	"fmt"
+	"os"
+
+	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
+)
 
 type (
 	// Config -.
@@ -8,12 +14,12 @@ type (
 		App
 		HTTP
 		Log
-		PG
+		// PG
 	}
 
 	// App -.
 	App struct {
-		Name    string `env-required:"true"     env:"APP_NAME"`
+		Name    string `env:"APP_NAME" env-required:"true"`
 		Version string `env-required:"true"  env:"APP_VERSION"`
 	}
 
@@ -28,18 +34,24 @@ type (
 	}
 
 	// PG -.
-	PG struct {
-		PoolMax int    `env-required:"true"  env:"PG_POOL_MAX"`
-		URL     string `env-required:"true"                 env:"PG_URL"`
-	}
+	// PG struct {
+	// 	PoolMax int    `env-required:"true"  env:"PG_POOL_MAX"`
+	// 	URL     string `env-required:"true"                 env:"PG_URL"`
+	// }
 )
 
 // NewConfig returns app config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
-
-	err := cleanenv.ReadEnv(cfg)
+	err := godotenv.Load()
 	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
+	fmt.Println("APP_NAME:", os.Getenv("APP_NAME"))
+	err = cleanenv.ReadEnv(cfg)
+	if err != nil {
+		fmt.Println("error reading env")
 		return nil, err
 	}
 
