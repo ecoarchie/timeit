@@ -9,15 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// type CreateRaceRequest struct {
-// 	Id       string    `json:"id"`
-// 	Name     string    `json:"name"`
-// 	RaceDate time.Time `json:"race_date"`
-// 	Timezone string    `json:"timezone"`
-// }
-
 type RaceConfigurator interface {
-	// Create(ctx context.Context, req entity.RaceFormData) (uuid.UUID, error)
 	Save(ctx context.Context, rc entity.RaceConfig) []error
 }
 
@@ -51,6 +43,7 @@ func (rs RaceService) Save(ctx context.Context, rc entity.RaceConfig) []error {
 	return errors
 }
 
+// TODO separate errors to ErrorToSave (preventing from saving) and Warning (can save, just pay attention)
 func (rs RaceService) validate(rc entity.RaceConfig) []error {
 	errors := []error{}
 	if err := validateRace(rc.Race); err != nil {

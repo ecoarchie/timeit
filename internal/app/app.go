@@ -22,6 +22,7 @@ import (
 func Run(cfg *config.Config) {
 	logger := logger.New(cfg.Log.Level)
 
+	// BUG add proper check for db initialization
 	// Postgres pool
 	logger.Info("Initializint postgres pool")
 	pool, err := pgxpool.New(context.Background(), cfg.PG.URL)
