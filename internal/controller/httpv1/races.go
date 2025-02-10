@@ -40,6 +40,7 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	// TODO add check for db save error for proper error reponse code
 	errs := rr.s.Save(r.Context(), conf)
 	if len(errs) != 0 {
+		rr.l.Error("error saving race config", errs)
 		var resp []byte
 		for _, e := range errs {
 			resp = append(resp, []byte(e.Error())...)

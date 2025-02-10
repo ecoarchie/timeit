@@ -30,16 +30,16 @@ func New(level string) *Logger {
 	switch strings.ToLower(level) {
 	case "error":
 		l = slog.LevelError
-		addSource = true
+		addSource = false
 	case "warn":
 		l = slog.LevelInfo
-		addSource = true
+		addSource = false
 	case "info":
 		l = slog.LevelInfo
 		addSource = false
 	case "debug":
 		l = slog.LevelDebug
-		addSource = true
+		addSource = false
 	default:
 		l = slog.LevelInfo
 		addSource = false

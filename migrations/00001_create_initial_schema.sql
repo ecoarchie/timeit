@@ -87,11 +87,13 @@ CREATE TABLE timing_points (
 -- Table: participants
 CREATE TABLE participants (
   id UUID PRIMARY KEY,
+  race_id UUID NOT NULL,
   first_name TEXT DEFAULT 'athlete',
   last_name TEXT DEFAULT 'unknown',
   gender category_gender NOT NULL DEFAULT 'unknown',
   date_of_birth DATE,
   phone TEXT,
+  comments TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

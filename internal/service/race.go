@@ -9,6 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO separate errors to ErrorToSave (preventing from saving) and Warning (can save, just pay attention)
+// TODO add category boundaries validation
+
 type RaceConfigurator interface {
 	Save(ctx context.Context, rc entity.RaceConfig) []error
 }
@@ -43,7 +46,6 @@ func (rs RaceService) Save(ctx context.Context, rc entity.RaceConfig) []error {
 	return errors
 }
 
-// TODO separate errors to ErrorToSave (preventing from saving) and Warning (can save, just pay attention)
 func (rs RaceService) validate(rc entity.RaceConfig) []error {
 	errors := []error{}
 	if err := validateRace(rc.Race); err != nil {
@@ -153,7 +155,7 @@ func validateCategory(raceID, eventID uuid.UUID, c entity.Category) error {
 		return fmt.Errorf("to age must be greater or equal to 0")
 	}
 	if c.FromAge > c.ToAge {
-		return fmt.Errorf("from age must be less than to age")
+		return fmt.Errorf("upper age limit must be greater than lower age limit")
 	}
 	return nil
 }

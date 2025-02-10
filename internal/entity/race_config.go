@@ -5,13 +5,13 @@ import (
 )
 
 type RaceConfig struct {
-	Race              Race               `json:"race"`
+	Race
 	PhysicalLocations []PhysicalLocation `json:"locations"`
 	Events            []EventConfig      `json:"events"`
 }
 
 type EventConfig struct {
-	Event        `json:"event"`
+	Event
 	TimingPoints []TimingPoint `json:"timing_points"`
 	Waves        []Wave        `json:"waves"`
 	Categories   []Category    `json:"categories"`
