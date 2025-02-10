@@ -25,22 +25,28 @@ var _ Interface = (*Logger)(nil)
 // New -.
 func New(level string) *Logger {
 	var l slog.Level
+	var addSource bool
 
 	switch strings.ToLower(level) {
 	case "error":
 		l = slog.LevelError
+		addSource = true
 	case "warn":
 		l = slog.LevelInfo
+		addSource = true
 	case "info":
 		l = slog.LevelInfo
+		addSource = false
 	case "debug":
 		l = slog.LevelDebug
+		addSource = true
 	default:
 		l = slog.LevelInfo
+		addSource = false
 	}
 	opts := &slog.HandlerOptions{
 		Level:     l,
-		AddSource: true,
+		AddSource: addSource,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))

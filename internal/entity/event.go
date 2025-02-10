@@ -8,9 +8,9 @@ import (
 )
 
 type Event struct {
-	ID               uuid.UUID `json:"id"`
+	ID               uuid.UUID `json:"event_id"`
 	RaceID           uuid.UUID `json:"race_id"`
-	Name             string    `json:"name"`
+	Name             string    `json:"event_name"`
 	DistanceInMeters int       `json:"distance_in_meters"`
 	EventDate        time.Time `json:"event_date"`
 }

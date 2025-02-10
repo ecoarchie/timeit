@@ -8,31 +8,34 @@ import (
 )
 
 type Race struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
+	ID       uuid.UUID `json:"race_id"`
+	Name     string    `json:"race_name"`
 	RaceDate time.Time `json:"race_date"`
 	Timezone string    `json:"timezone"`
 }
 
-func NewRace(name string, raceDate time.Time, tz string) (*Race, error) {
-	if err := isValidTimezone(tz); err != nil {
+func NewRace(req RaceFormData) (*Race, error) {
+	if err := IsValidTimezone(req.Timezone); err != nil {
 		return nil, err
 	}
-	if name == "" {
+	if req.Name == "" {
 		return nil, fmt.Errorf("empty race name")
 	}
-	id := uuid.New()
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid race id")
+	}
 	return &Race{
 		ID:       id,
-		Name:     name,
-		RaceDate: raceDate,
-		Timezone: tz,
+		Name:     req.Name,
+		RaceDate: req.RaceDate,
+		Timezone: req.Timezone,
 	}, nil
 }
 
-func isValidTimezone(tz string) error {
+func IsValidTimezone(tz string) error {
 	if tz == "" {
-		return fmt.Errorf("empty timezone")
+		return fmt.Errorf("empty timezone in race config")
 	}
 	_, err := time.LoadLocation(tz) // tz must correspond to IANA time zones names
 	return err

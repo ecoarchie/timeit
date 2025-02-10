@@ -13,30 +13,29 @@ type (
 		App
 		HTTP
 		Log
-		// PG
+		PG
 	}
 
 	// App -.
 	App struct {
-		Name    string `env:"APP_NAME" env-required:"true"`
-		Version string `env-required:"true"  env:"APP_VERSION"`
+		Name    string `env-required:"true" env:"APP_NAME"`
+		Version string `env-required:"true" env:"APP_VERSION"`
 	}
 
 	// HTTP -.
 	HTTP struct {
-		Port string `env-required:"true"  env:"HTTP_PORT"`
+		Port string `env-required:"true" env:"HTTP_PORT"`
 	}
 
 	// Log -.
 	Log struct {
-		Level string `env-required:"true"    env:"LOG_LEVEL"`
+		Level string `env-required:"true" env:"LOG_LEVEL"`
 	}
 
 	// PG -.
-	// PG struct {
-	// 	PoolMax int    `env-required:"true"  env:"PG_POOL_MAX"`
-	// 	URL     string `env-required:"true"                 env:"PG_URL"`
-	// }
+	PG struct {
+		URL string `env-required:"true" env:"PG_URL"`
+	}
 )
 
 // NewConfig returns app config.
