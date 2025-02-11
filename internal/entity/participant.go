@@ -10,27 +10,46 @@ import (
 type Participant struct {
 	ID          uuid.UUID      `json:"participant_id"`
 	RaceID      uuid.UUID      `json:"race_id"`
+	EventID     uuid.UUID      `json:"event_id"`
+	WaveID      uuid.UUID      `json:"wave_id"`
+	Bib         int            `json:"bib"`
+	Tag         int            `json:"tag"`
 	FirstName   string         `json:"first_name"`
 	LastName    string         `json:"last_name"`
 	Gender      CategoryGender `json:"gender"`
 	DateOfBirth time.Time      `json:"date_of_birth"`
+	CategoryID  uuid.NullUUID  `json:"category_id"`
 	Phone       string         `json:"phone"`
 	Comments    string         `json:"comments"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
-type ParticipantRequest struct {
-	RaceID      string         `json:"race_id"`
+type ParticipantCreateRequest struct {
+	RaceID      uuid.UUID      `json:"race_id"`
+	EventID     uuid.UUID      `json:"event_id"`
+	WaveID      uuid.UUID      `json:"wave_id"`
+	Bib         int            `json:"bib"`
+	Tag         int            `json:"tag"`
 	FirstName   string         `json:"first_name"`
 	LastName    string         `json:"last_name"`
 	Gender      CategoryGender `json:"gender"`
 	DateOfBirth time.Time      `json:"date_of_birth"`
+	CategoryID  uuid.NullUUID  `json:"category_id"`
 	Phone       string         `json:"phone"`
 	Comments    string         `json:"comments"`
 }
 
-func NewParticipant(req ParticipantRequest) (*Participant, error) {
+func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
+	if req.RaceID == uuid.Nil {
+		return nil, fmt.Errorf("participant must have race assigned")
+	}
+	if req.EventID == uuid.Nil {
+		return nil, fmt.Errorf("participant must have event assigned")
+	}
+	if req.WaveID == uuid.Nil {
+		return nil, fmt.Errorf("participant must have wave assigned")
+	}
 	if req.FirstName == "" {
 		req.FirstName = "athlete"
 	}
@@ -59,18 +78,19 @@ func NewParticipant(req ParticipantRequest) (*Participant, error) {
 		req.DateOfBirth = zbd
 	}
 
-	raceID, err := uuid.Parse(req.RaceID)
-	if err != nil {
-		return nil, fmt.Errorf("wrong race id for participant")
-	}
 	id := uuid.New()
 	return &Participant{
 		ID:          id,
-		RaceID:      raceID,
+		RaceID:      req.RaceID,
+		EventID:     req.EventID,
+		WaveID:      req.WaveID,
+		Bib:         req.Bib,
+		Tag:         req.Tag,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
 		Gender:      req.Gender,
 		DateOfBirth: req.DateOfBirth,
+		CategoryID:  req.CategoryID,
 		Phone:       req.Phone,
 		Comments:    req.Comments,
 		CreatedAt:   time.Now(),

@@ -27,8 +27,6 @@ func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Ha
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
-	rr.l.Info("Saving race config")
-
 	var conf entity.RaceConfig
 	err := json.NewDecoder(r.Body).Decode(&conf)
 	if err != nil {
@@ -49,5 +47,6 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 		w.Write(resp)
 		return
 	}
+	rr.l.Info("Config for race saved")
 	w.Write([]byte("ok"))
 }

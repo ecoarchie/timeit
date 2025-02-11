@@ -4,7 +4,6 @@
 CREATE TABLE races (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
-  race_date DATE NOT NULL,
   timezone TEXT NOT NULL
 );
 
@@ -95,7 +94,8 @@ CREATE TABLE participants (
   phone TEXT,
   comments TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY (race_id) REFERENCES races (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_participants_first_last ON participants (first_name, last_name);
@@ -106,7 +106,7 @@ CREATE TABLE event_participant (
   event_id UUID NOT NULL,
   participant_id UUID NOT NULL REFERENCES participants(id),
   wave_id UUID NOT NULL,
-  category_id UUID NOT NULL,
+  category_id UUID,
   bib INTEGER,
   PRIMARY KEY (race_id, event_id, participant_id)
 );

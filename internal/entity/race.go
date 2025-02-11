@@ -10,7 +10,6 @@ import (
 type Race struct {
 	ID       uuid.UUID `json:"race_id"`
 	Name     string    `json:"race_name"`
-	RaceDate time.Time `json:"race_date"`
 	Timezone string    `json:"timezone"`
 }
 
@@ -28,7 +27,6 @@ func NewRace(req RaceFormData) (*Race, error) {
 	return &Race{
 		ID:       id,
 		Name:     req.Name,
-		RaceDate: req.RaceDate,
 		Timezone: req.Timezone,
 	}, nil
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/pkg/logger"
@@ -33,7 +34,7 @@ func NewRaceService(logger logger.Interface, repo RaceRepo) *RaceService {
 }
 
 func (rs RaceService) Save(ctx context.Context, rc entity.RaceConfig) []error {
-	errors := rs.validate(rc)
+	errors := rs.validate(&rc)
 	if len(errors) != 0 {
 		return errors
 	}
@@ -46,7 +47,7 @@ func (rs RaceService) Save(ctx context.Context, rc entity.RaceConfig) []error {
 	return errors
 }
 
-func (rs RaceService) validate(rc entity.RaceConfig) []error {
+func (rs RaceService) validate(rc *entity.RaceConfig) []error {
 	errors := []error{}
 	if err := validateRace(rc.Race); err != nil {
 		errors = append(errors, err)
@@ -62,7 +63,7 @@ func (rs RaceService) validate(rc entity.RaceConfig) []error {
 		return errors
 	}
 	for _, ec := range rc.Events {
-		if err := validateEventConfig(rc.Race, rc.PhysicalLocations, ec); err != nil {
+		if err := validateEventConfig(rc.Race, rc.PhysicalLocations, &ec); err != nil {
 			errors = append(errors, err...)
 		}
 	}
@@ -95,7 +96,7 @@ func validatePhysicalLocations(locs []entity.PhysicalLocation) error {
 	return nil
 }
 
-func validateEventConfig(race entity.Race, locs []entity.PhysicalLocation, ec entity.EventConfig) []error {
+func validateEventConfig(race entity.Race, locs []entity.PhysicalLocation, ec *entity.EventConfig) []error {
 	errors := []error{}
 	if race.ID != ec.RaceID {
 		errors = append(errors, fmt.Errorf("wrong race id for event %s", ec.Name))
@@ -130,15 +131,16 @@ func validateEventConfig(race entity.Race, locs []entity.PhysicalLocation, ec en
 		}
 	}
 
+	// pass addr of Category to update its BirthDate fields
 	for _, c := range ec.Categories {
-		if err := validateCategory(race.ID, ec.ID, c); err != nil {
+		if err := validateCategory(race.ID, ec.ID, ec.EventDate, &c); err != nil {
 			errors = append(errors, err)
 		}
 	}
 	return errors
 }
 
-func validateCategory(raceID, eventID uuid.UUID, c entity.Category) error {
+func validateCategory(raceID, eventID uuid.UUID, eventDate time.Time, c *entity.Category) error {
 	if raceID == uuid.Nil || raceID != c.RaceID {
 		return fmt.Errorf("empty or invalid raceID for category")
 	}
@@ -156,6 +158,18 @@ func validateCategory(raceID, eventID uuid.UUID, c entity.Category) error {
 	}
 	if c.FromAge > c.ToAge {
 		return fmt.Errorf("upper age limit must be greater than lower age limit")
+	}
+	tz := eventDate.Location()
+	if !c.ToRaceDate {
+		c.BirthDateFrom = time.Date(eventDate.Year()-c.ToAge, time.January, 1, 0, 0, 0, 0, tz)
+	} else {
+		c.BirthDateFrom = time.Date(eventDate.Year()-c.ToAge+1, eventDate.Month(), eventDate.Day()+1, 0, 0, 0, 0, tz)
+	}
+
+	if !c.FromRaceDate {
+		c.BirthDateTo = time.Date(eventDate.Year()-c.FromAge, time.December, 31, 0, 0, 0, 0, tz)
+	} else {
+		c.BirthDateTo = time.Date(eventDate.Year()-c.FromAge, eventDate.Month(), eventDate.Day(), 0, 0, 0, 0, tz)
 	}
 	return nil
 }
