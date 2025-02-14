@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -20,9 +22,24 @@ type TimingPoint struct {
 	Type              TPType    `json:"timing_point_type"`
 	DistanceFromStart int       `json:"distance_from_start"`
 	BoxName           string    `json:"box_name"`
-	MinTimeSec        int       `json:"min_time_sec"`
-	MaxTimeSec        int       `json:"max_time_sec"`
-	MinLapTimeSec     int       `json:"min_lap_time_sec"`
+	MinTimeSec        int64     `json:"min_time_sec"`
+	MaxTimeSec        int64     `json:"max_time_sec"`
+	MinLapTimeSec     int64     `json:"min_lap_time_sec"`
+	ValidMinTime      time.Time
+	ValidMaxTime      time.Time
+}
+
+func (tp *TimingPoint) SetValidMinMaxTimes(participantWaceStart time.Time) {
+	if tp.MinTimeSec == 0 {
+		tp.ValidMinTime = participantWaceStart
+	} else {
+		tp.ValidMinTime = participantWaceStart.Add(time.Duration(tp.MinTimeSec) * time.Second)
+	}
+	if tp.MaxTimeSec == 0 {
+		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(time.Hour) * 24)
+	} else {
+		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(tp.MaxTimeSec) * time.Second)
+	}
 }
 
 type NewTPrequest struct {
@@ -32,9 +49,9 @@ type NewTPrequest struct {
 	Type              TPType    `json:"type"`
 	DistanceFromStart int       `json:"distance_from_start"`
 	BoxName           string    `json:"box_name"`
-	MinTimeSec        int       `json:"min_time_sec"`
-	MaxTimeSec        int       `json:"max_time_sec"`
-	MinLapTimeSec     int       `json:"min_lap_time_sec"`
+	MinTimeSec        int64     `json:"min_time_sec"`
+	MaxTimeSec        int64     `json:"max_time_sec"`
+	MinLapTimeSec     int64     `json:"min_lap_time_sec"`
 }
 
 func IsValidTPType(tp TPType) bool {
@@ -80,3 +97,18 @@ func IsValidTPType(tp TPType) bool {
 // 		MinLapTimeSec:     req.MinLapTimeSec,
 // 	}, nil
 // }
+
+func RandomTimingPoint(name string, typ TPType, dst int, boxName string, min, max, lap int64) *TimingPoint {
+	return &TimingPoint{
+		ID:                uuid.New(),
+		RaceID:            uuid.New(),
+		EventID:           uuid.New(),
+		Name:              name,
+		Type:              typ,
+		DistanceFromStart: dst,
+		BoxName:           boxName,
+		MinTimeSec:        min,
+		MaxTimeSec:        max,
+		MinLapTimeSec:     lap,
+	}
+}

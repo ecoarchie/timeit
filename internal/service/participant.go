@@ -13,7 +13,9 @@ type ParticipantEditor interface{}
 
 type ParticipantRepo interface {
 	SaveParticipant(p *entity.Participant) error
-	GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.UUID, error)
+	GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error)
+	GetParticipantWithChip(chip int) (*entity.Participant, error)
+	// GetParticipantByID(id uuid.UUID) *entity.Participant
 }
 
 type ParticipantService struct {
@@ -52,9 +54,6 @@ func (ps ParticipantService) assignCategory(p *entity.Participant) error {
 	if err != nil {
 		return fmt.Errorf("error assigning category for participant with bib %d", p.Bib)
 	}
-	p.CategoryID = uuid.NullUUID{
-		UUID:  catID,
-		Valid: true,
-	}
+	p.CategoryID = catID
 	return nil
 }

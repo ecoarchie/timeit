@@ -21,6 +21,6 @@ func NewRaceRepoPG(q RaceQuery) *RaceRepoPG {
 	}
 }
 
-func (rr RaceRepoPG) SaveRaceConfig(ctx context.Context, r entity.RaceConfig) error {
+func (rr RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) error {
 	return nil
 }

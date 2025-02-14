@@ -14,11 +14,11 @@ import (
 // TODO add category boundaries validation
 
 type RaceConfigurator interface {
-	Save(ctx context.Context, rc entity.RaceConfig) []error
+	Save(ctx context.Context, rc *entity.RaceConfig) []error
 }
 
 type RaceRepo interface {
-	SaveRaceConfig(ctx context.Context, r entity.RaceConfig) error
+	SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) error
 }
 
 type RaceService struct {
@@ -33,8 +33,8 @@ func NewRaceService(logger logger.Interface, repo RaceRepo) *RaceService {
 	}
 }
 
-func (rs RaceService) Save(ctx context.Context, rc entity.RaceConfig) []error {
-	errors := rs.validate(&rc)
+func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) []error {
+	errors := rs.validate(rc)
 	if len(errors) != 0 {
 		return errors
 	}
@@ -44,6 +44,7 @@ func (rs RaceService) Save(ctx context.Context, rc entity.RaceConfig) []error {
 		rs.l.Error(msg, err)
 		errors = append(errors, err)
 	}
+	// fmt.Println("Race config cats are: ", rc.Events[0].Categories[0], rc.Events[0].Categories[1])
 	return errors
 }
 
@@ -63,14 +64,14 @@ func (rs RaceService) validate(rc *entity.RaceConfig) []error {
 		return errors
 	}
 	for _, ec := range rc.Events {
-		if err := validateEventConfig(rc.Race, rc.PhysicalLocations, &ec); err != nil {
+		if err := validateEventConfig(rc.Race, rc.PhysicalLocations, ec); err != nil {
 			errors = append(errors, err...)
 		}
 	}
 	return errors
 }
 
-func validateRace(race entity.Race) error {
+func validateRace(race *entity.Race) error {
 	if err := entity.IsValidTimezone(race.Timezone); err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func validateRace(race entity.Race) error {
 	return nil
 }
 
-func validatePhysicalLocations(locs []entity.PhysicalLocation) error {
+func validatePhysicalLocations(locs []*entity.PhysicalLocation) error {
 	if len(locs) == 0 {
 		return fmt.Errorf("race must have at least one physical location")
 	}
@@ -96,7 +97,7 @@ func validatePhysicalLocations(locs []entity.PhysicalLocation) error {
 	return nil
 }
 
-func validateEventConfig(race entity.Race, locs []entity.PhysicalLocation, ec *entity.EventConfig) []error {
+func validateEventConfig(race *entity.Race, locs []*entity.PhysicalLocation, ec *entity.EventConfig) []error {
 	errors := []error{}
 	if race.ID != ec.RaceID {
 		errors = append(errors, fmt.Errorf("wrong race id for event %s", ec.Name))
@@ -133,7 +134,7 @@ func validateEventConfig(race entity.Race, locs []entity.PhysicalLocation, ec *e
 
 	// pass addr of Category to update its BirthDate fields
 	for _, c := range ec.Categories {
-		if err := validateCategory(race.ID, ec.ID, ec.EventDate, &c); err != nil {
+		if err := validateCategory(race.ID, ec.ID, ec.EventDate, c); err != nil {
 			errors = append(errors, err)
 		}
 	}
@@ -174,7 +175,7 @@ func validateCategory(raceID, eventID uuid.UUID, eventDate time.Time, c *entity.
 	return nil
 }
 
-func validateWave(raceID, eventID uuid.UUID, w entity.Wave) error {
+func validateWave(raceID, eventID uuid.UUID, w *entity.Wave) error {
 	if raceID == uuid.Nil || raceID != w.RaceID {
 		return fmt.Errorf("empty or invalid raceID for wave")
 	}
@@ -187,7 +188,7 @@ func validateWave(raceID, eventID uuid.UUID, w entity.Wave) error {
 	return nil
 }
 
-func validateTimingPoint(raceID, eventID uuid.UUID, locs []entity.PhysicalLocation, tp entity.TimingPoint) error {
+func validateTimingPoint(raceID, eventID uuid.UUID, locs []*entity.PhysicalLocation, tp *entity.TimingPoint) error {
 	if raceID == uuid.Nil {
 		return fmt.Errorf("empty raceID")
 	}

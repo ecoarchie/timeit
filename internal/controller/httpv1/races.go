@@ -11,15 +11,17 @@ import (
 )
 
 type raceRoutes struct {
-	s service.RaceConfigurator
-	l logger.Interface
+	rcs     service.RaceConfigurator
+	ps      service.ParticipantService
+	results service.Results
+	l       logger.Interface
 }
 
 func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Handler {
 	l.Info("creating new race routes")
 	rr := &raceRoutes{
-		s: service,
-		l: l,
+		rcs: service,
+		l:   l,
 	}
 	r := chi.NewRouter()
 	r.Post("/save", rr.saveRaceConfig)
@@ -27,7 +29,7 @@ func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Ha
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
-	var conf entity.RaceConfig
+	var conf *entity.RaceConfig
 	err := json.NewDecoder(r.Body).Decode(&conf)
 	if err != nil {
 		rr.l.Error("error parsing race config form data", err)
@@ -36,7 +38,7 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO add check for db save error for proper error reponse code
-	errs := rr.s.Save(r.Context(), conf)
+	errs := rr.rcs.Save(r.Context(), conf)
 	if len(errs) != 0 {
 		rr.l.Error("error saving race config", errs)
 		var resp []byte
@@ -50,3 +52,7 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	rr.l.Info("Config for race saved")
 	w.Write([]byte("ok"))
 }
+
+// func (rr *raceRoutes) getResultsForParticipant(w http.ResponseWriter, r *http.Request) {
+// 	rr.results.ResultsForParticipant()
+// }

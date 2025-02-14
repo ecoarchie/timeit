@@ -13,7 +13,7 @@ type Participant struct {
 	EventID     uuid.UUID      `json:"event_id"`
 	WaveID      uuid.UUID      `json:"wave_id"`
 	Bib         int            `json:"bib"`
-	Tag         int            `json:"tag"`
+	Chip        int            `json:"chip"`
 	FirstName   string         `json:"first_name"`
 	LastName    string         `json:"last_name"`
 	Gender      CategoryGender `json:"gender"`
@@ -21,8 +21,6 @@ type Participant struct {
 	CategoryID  uuid.NullUUID  `json:"category_id"`
 	Phone       string         `json:"phone"`
 	Comments    string         `json:"comments"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
 type ParticipantCreateRequest struct {
@@ -30,7 +28,7 @@ type ParticipantCreateRequest struct {
 	EventID     uuid.UUID      `json:"event_id"`
 	WaveID      uuid.UUID      `json:"wave_id"`
 	Bib         int            `json:"bib"`
-	Tag         int            `json:"tag"`
+	Chip        int            `json:"chip"`
 	FirstName   string         `json:"first_name"`
 	LastName    string         `json:"last_name"`
 	Gender      CategoryGender `json:"gender"`
@@ -85,7 +83,7 @@ func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 		EventID:     req.EventID,
 		WaveID:      req.WaveID,
 		Bib:         req.Bib,
-		Tag:         req.Tag,
+		Chip:        req.Chip,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
 		Gender:      req.Gender,
@@ -93,8 +91,6 @@ func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 		CategoryID:  req.CategoryID,
 		Phone:       req.Phone,
 		Comments:    req.Comments,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}, nil
 }
 
@@ -104,5 +100,23 @@ func isValidGender(c CategoryGender) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func RandomParticipant(name, surname string, gender CategoryGender, bib, chip int) *Participant {
+	return &Participant{
+		ID:          uuid.New(),
+		RaceID:      uuid.New(),
+		EventID:     uuid.New(),
+		WaveID:      uuid.New(),
+		Bib:         bib,
+		Chip:        chip,
+		FirstName:   name,
+		LastName:    name,
+		Gender:      gender,
+		DateOfBirth: time.Time{},
+		CategoryID:  uuid.NullUUID{},
+		Phone:       "",
+		Comments:    "",
 	}
 }

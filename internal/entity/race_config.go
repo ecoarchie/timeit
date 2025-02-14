@@ -5,16 +5,16 @@ import (
 )
 
 type RaceConfig struct {
-	Race
-	PhysicalLocations []PhysicalLocation `json:"locations"`
-	Events            []EventConfig      `json:"events"`
+	*Race
+	PhysicalLocations []*PhysicalLocation `json:"locations"`
+	Events            []*EventConfig      `json:"events"`
 }
 
 type EventConfig struct {
 	Event
-	TimingPoints []TimingPoint `json:"timing_points"`
-	Waves        []Wave        `json:"waves"`
-	Categories   []Category    `json:"categories"`
+	TimingPoints []*TimingPoint `json:"timing_points"`
+	Waves        []*Wave        `json:"waves"`
+	Categories   []*Category    `json:"categories"`
 }
 
 type RaceFormData struct {
