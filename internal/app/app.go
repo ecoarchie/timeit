@@ -11,6 +11,7 @@ import (
 	"github.com/ecoarchie/timeit/config"
 	"github.com/ecoarchie/timeit/internal/controller/httpv1"
 	"github.com/ecoarchie/timeit/internal/database"
+	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/repo"
 	"github.com/ecoarchie/timeit/internal/service"
 	"github.com/ecoarchie/timeit/pkg/httpserver"
@@ -34,9 +35,12 @@ func Run(cfg *config.Config) {
 
 	db := database.New(pool)
 
+	// Race Cache
+
+	raceCache := entity.NewRaceCache()
 	// Services
 	logger.Info("Creating services")
-	raceService := service.NewRaceService(logger, repo.NewRaceRepoPG(db))
+	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(db))
 
 	// Routers
 	logger.Info("Creating routers")

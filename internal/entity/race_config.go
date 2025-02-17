@@ -11,7 +11,7 @@ type RaceConfig struct {
 }
 
 type EventConfig struct {
-	Event
+	*Event
 	TimingPoints []*TimingPoint `json:"timing_points"`
 	Waves        []*Wave        `json:"waves"`
 	Categories   []*Category    `json:"categories"`

@@ -21,16 +21,16 @@ func (rs ResultsService) ResultForParticipant(id uuid.UUID) *entity.ParticipantR
 }
 
 // TODO
-func (rs ResultsService) GetResult(p *entity.Participant, recs []entity.BoxRecord, w entity.Wave, tps []*entity.TimingPoint) (*entity.ParticipantResult, error) { // tps are possible timing points for participants' event
+func (rs ResultsService) GetResult(p *entity.Participant, recs []entity.BoxRecord, w entity.Wave, tps []*entity.TimingPoint) (*entity.ParticipantResult, error) {
+	// tps are timing points for participants' event
 	// recs are sorted by TOD
 	// tps are sorted by distance from start
 	// resc must be valid, canUse = true
 	// w is participants' wave. assuming that wave status is started
 	tpBoxes := make(map[string][]*entity.TimingPoint)
 	var startingTP *entity.TimingPoint
-	ps := entity.NewParticipantResults(p, len(tps))
+	ps := entity.NewParticipantResults(p)
 	for _, tp := range tps {
-		tp.SetValidMinMaxTimes(w.StartTime)
 		tpBoxes[tp.BoxName] = append(tpBoxes[tp.BoxName], tp)
 		if tp.Type == entity.TPTypeStart {
 			startingTP = tp
@@ -51,19 +51,34 @@ outer:
 			ps.ResultsForTPs[tp.Name] = &entity.TimingPointResult{
 				TimingPointID: tp.ID,
 			}
-			if (r.TOD.Equal(tp.ValidMinTime) || r.TOD.After(tp.ValidMinTime)) && (r.TOD.Equal(tp.ValidMaxTime) || r.TOD.Before(tp.ValidMaxTime)) {
+			validMinTime := w.StartTime.Add(time.Duration(tp.MinTimeSec))
+			var validMaxTime time.Time
+			if tp.MaxTimeSec == 0 {
+				validMaxTime = w.StartTime.Add(time.Hour * 24)
+			} else {
+				validMaxTime = w.StartTime.Add(time.Duration(tp.MaxTimeSec) * time.Second)
+			}
+			if (r.TOD.Equal(validMinTime) || r.TOD.After(validMinTime)) && (r.TOD.Equal(validMaxTime) || r.TOD.Before(validMaxTime)) {
 				if i > 0 {
 					prevLapTP := tpBoxes[r.BoxName][i-1]
 					if r.TOD.Sub(ps.ResultsForTPs[prevLapTP.Name].TOD) < time.Duration(tp.MinLapTimeSec)*time.Second {
 						continue outer
 					}
 				}
-				ps.ResultsForTPs[tp.Name].GunTime = int64(r.TOD.Sub(w.StartTime).Microseconds())
-				if tp.Name == startingTP.Name {
-					ps.ResultsForTPs[tp.Name].NetTime = ps.ResultsForTPs[tp.Name].GunTime
+				recTODfromStart := r.TOD.Sub(w.StartTime)
+				_, startExists := ps.ResultsForTPs[startingTP.Name]
+
+				// Calculate gun time
+				ps.ResultsForTPs[tp.Name].GunTime = recTODfromStart
+
+				// Calculate net time
+				if tp.Type == entity.TPTypeStart || (tp.Type != entity.TPTypeStart && !startExists) {
+					ps.ResultsForTPs[tp.Name].NetTime = recTODfromStart
 				} else {
-					ps.ResultsForTPs[tp.Name].NetTime = int64(r.TOD.Sub(ps.ResultsForTPs[startingTP.Name].TOD).Microseconds())
+					ps.ResultsForTPs[tp.Name].NetTime = r.TOD.Sub(ps.ResultsForTPs[startingTP.Name].TOD)
 				}
+
+				// Calculate TOD
 				ps.ResultsForTPs[tp.Name].TOD = r.TOD
 			}
 		}

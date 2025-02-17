@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -25,22 +23,20 @@ type TimingPoint struct {
 	MinTimeSec        int64     `json:"min_time_sec"`
 	MaxTimeSec        int64     `json:"max_time_sec"`
 	MinLapTimeSec     int64     `json:"min_lap_time_sec"`
-	ValidMinTime      time.Time
-	ValidMaxTime      time.Time
 }
 
-func (tp *TimingPoint) SetValidMinMaxTimes(participantWaceStart time.Time) {
-	if tp.MinTimeSec == 0 {
-		tp.ValidMinTime = participantWaceStart
-	} else {
-		tp.ValidMinTime = participantWaceStart.Add(time.Duration(tp.MinTimeSec) * time.Second)
-	}
-	if tp.MaxTimeSec == 0 {
-		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(time.Hour) * 24)
-	} else {
-		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(tp.MaxTimeSec) * time.Second)
-	}
-}
+// func (tp *TimingPoint) SetValidMinMaxTimes(participantWaceStart time.Time) {
+// 	if tp.MinTimeSec == 0 {
+// 		tp.ValidMinTime = participantWaceStart
+// 	} else {
+// 		tp.ValidMinTime = participantWaceStart.Add(time.Duration(tp.MinTimeSec) * time.Second)
+// 	}
+// 	if tp.MaxTimeSec == 0 {
+// 		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(time.Hour) * 24)
+// 	} else {
+// 		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(tp.MaxTimeSec) * time.Second)
+// 	}
+// }
 
 type NewTPrequest struct {
 	RaceID            uuid.UUID `json:"race_id"`

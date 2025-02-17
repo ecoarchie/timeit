@@ -22,14 +22,16 @@ type RaceRepo interface {
 }
 
 type RaceService struct {
-	l    logger.Interface
-	repo RaceRepo
+	l         logger.Interface
+	raceCache *entity.RaceCache
+	repo      RaceRepo
 }
 
-func NewRaceService(logger logger.Interface, repo RaceRepo) *RaceService {
+func NewRaceService(logger logger.Interface, rc *entity.RaceCache, repo RaceRepo) *RaceService {
 	return &RaceService{
-		l:    logger,
-		repo: repo,
+		l:         logger,
+		raceCache: rc,
+		repo:      repo,
 	}
 }
 
@@ -44,6 +46,8 @@ func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) []error {
 		rs.l.Error(msg, err)
 		errors = append(errors, err)
 	}
+	rs.raceCache.StoreRaceConfig(rc)
+	rs.l.Info("race cache updated")
 	// fmt.Println("Race config cats are: ", rc.Events[0].Categories[0], rc.Events[0].Categories[1])
 	return errors
 }
