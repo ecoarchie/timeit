@@ -11,6 +11,7 @@ type ParticipantResult struct {
 	*Participant
 	ResultsForTPs `json:"results"`
 }
+type TimingPointID = uuid.UUID
 
 type TimingPointResult struct {
 	TimingPointID uuid.UUID     `json:"timing_point_id"`
@@ -19,7 +20,7 @@ type TimingPointResult struct {
 	NetTime       time.Duration `json:"net_time"`
 }
 
-type ResultsForTPs map[string]*TimingPointResult
+type ResultsForTPs map[TimingPointID]*TimingPointResult
 
 func NewParticipantResults(p *Participant) *ParticipantResult {
 	return &ParticipantResult{

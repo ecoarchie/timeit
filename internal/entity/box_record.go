@@ -13,4 +13,5 @@ type BoxRecord struct {
 	TOD     time.Time `json:"tod"`
 	BoxName string    `json:"box_name"`
 	CanUse  bool      `json:"can_use"`
+	// Type uint `json:"type"`
 }
