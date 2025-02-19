@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewRouter(handler *chi.Mux, l logger.Interface, service service.RaceConfigurator) {
+func NewRaceRouter(handler *chi.Mux, l logger.Interface, raceService service.RaceConfigurator) {
 	handler.Use(cors.AllowAll().Handler)
 	handler.Use(middleware.Heartbeat("/ping"))
 	handler.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -18,5 +18,8 @@ func NewRouter(handler *chi.Mux, l logger.Interface, service service.RaceConfigu
 	})
 
 	// Routers
-	handler.Mount("/races", newRaceRoutes(l, service))
+	handler.Mount("/races", newRaceRoutes(l, raceService))
+}
+
+func NewParticipantResultsRouter(handler *chi.Mux, l logger.Interface, manager service.ParticipantResultsManager) {
 }

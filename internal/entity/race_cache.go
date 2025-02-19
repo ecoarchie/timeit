@@ -6,22 +6,29 @@ import (
 	"github.com/google/uuid"
 )
 
+type (
+	EventID       = uuid.UUID
+	TimingPointID = uuid.UUID
+	WaveID        = uuid.UUID
+	LocationID    = uuid.UUID
+)
+
 type RaceCache struct {
-	Events            map[uuid.UUID]*Event
-	TimingPoints      map[uuid.UUID]*TimingPoint
-	EventTimingPoints map[uuid.UUID][]*TimingPoint
-	Waves             map[uuid.UUID]*Wave
-	Locations         map[uuid.UUID]*PhysicalLocation
+	Events            map[EventID]*Event
+	TimingPoints      map[TimingPointID]*TimingPoint
+	EventTimingPoints map[EventID][]*TimingPoint
+	Waves             map[WaveID]*Wave
+	Locations         map[LocationID]*PhysicalLocation
 	mu                sync.RWMutex
 }
 
 func NewRaceCache() *RaceCache {
 	return &RaceCache{
-		Events:            make(map[uuid.UUID]*Event),
-		TimingPoints:      make(map[uuid.UUID]*TimingPoint),
-		EventTimingPoints: make(map[uuid.UUID][]*TimingPoint),
-		Waves:             make(map[uuid.UUID]*Wave),
-		Locations:         make(map[uuid.UUID]*PhysicalLocation),
+		Events:            make(map[EventID]*Event),
+		TimingPoints:      make(map[TimingPointID]*TimingPoint),
+		EventTimingPoints: make(map[EventID][]*TimingPoint),
+		Waves:             make(map[WaveID]*Wave),
+		Locations:         make(map[LocationID]*PhysicalLocation),
 	}
 }
 

@@ -11,10 +11,8 @@ import (
 )
 
 type raceRoutes struct {
-	rcs     service.RaceConfigurator
-	ps      service.ParticipantService
-	results service.Results
-	l       logger.Interface
+	rcs service.RaceConfigurator
+	l   logger.Interface
 }
 
 func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Handler {

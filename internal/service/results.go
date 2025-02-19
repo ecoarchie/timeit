@@ -7,12 +7,18 @@ import (
 	"github.com/google/uuid"
 )
 
-type Results interface {
+type ResultsManager interface {
 	ResultForParticipant(id uuid.UUID) *entity.ParticipantResult
 }
 
 type ResultsService struct {
 	ParticipantRepo ParticipantRepo
+}
+
+func NewResultsService(repo ParticipantRepo) *ResultsService {
+	return &ResultsService{
+		ParticipantRepo: repo,
+	}
 }
 
 // TODO
@@ -27,7 +33,7 @@ func (rs ResultsService) GetResults(pr *entity.ParticipantResult, recs []entity.
 	// recs are only for particular participant chip, sorted by TOD
 	// resc must be valid, canUse = true
 	// wave is participants' wave. assuming that wave status is 'started'
-	tpBoxes := make(map[string][]*entity.TimingPoint)
+	tpBoxes := make(map[entity.BoxName][]*entity.TimingPoint)
 	var startingTP *entity.TimingPoint
 	// ps := entity.NewParticipantResults(participant)
 	for _, tp := range tps {
@@ -41,13 +47,14 @@ func (rs ResultsService) GetResults(pr *entity.ParticipantResult, recs []entity.
 		if res == nil {
 			continue
 		}
-		_, exists := pr.ResultsForTPs[res.TimingPointID]
+		// BUG check if timing point of type 'start' doesn't exist at all
+		_, exists := pr.Results[res.TimingPointID]
 		if exists && res.TimingPointID != startingTP.ID {
-			// TODO skip creating result for finish and standard types of TPs. Later check validation rule to accept the record
+			// TODO skip creating result for finish and standard types of TPs. Later the rule for finish and standard type may change from 'first read' to 'last read'
 			continue
 		}
 		// BUG check for prevlap rule. After that delete pr passed to ResultForRecord func
-		pr.ResultsForTPs[res.TimingPointID] = res
+		pr.Results[res.TimingPointID] = res
 	}
 	return pr, nil
 }
@@ -61,39 +68,43 @@ func (rs ResultsService) ResultForRecord(r entity.BoxRecord, waveStartTime time.
 	for i, tp := range tps {
 		// if tp.Type == entity.TPTypeFinish || tp.Type == entity.TPTypeStandard {
 		// 	// if there is already result for standard or finish TP then skip
-		// 	if _, ok := ps.ResultsForTPs[tp.ID]; ok {
+		// 	if _, ok := ps.Results[tp.ID]; ok {
 		// 		return nil
 		// 	}
 		// }
-		// ps.ResultsForTPs[tp.ID] = &entity.TimingPointResult{
+		// ps.Results[tp.ID] = &entity.TimingPointResult{
 		// 	TimingPointID: tp.ID,
 		// }
 		validMinTime := waveStartTime.Add(time.Duration(tp.MinTimeSec))
 		var validMaxTime time.Time
 		if tp.MaxTimeSec == 0 {
-			validMaxTime = waveStartTime.Add(time.Hour * 24)
+			validMaxTime = waveStartTime.Add(time.Hour * 240)
 		} else {
 			validMaxTime = waveStartTime.Add(time.Duration(tp.MaxTimeSec) * time.Second)
 		}
 		if (r.TOD.Equal(validMinTime) || r.TOD.After(validMinTime)) && (r.TOD.Equal(validMaxTime) || r.TOD.Before(validMaxTime)) {
 			if i > 0 {
 				prevLapTP := tps[i-1]
-				if r.TOD.Sub(pr.ResultsForTPs[prevLapTP.ID].TOD) < time.Duration(tp.MinLapTimeSec)*time.Second {
+				if r.TOD.Sub(pr.Results[prevLapTP.ID].TOD) < time.Duration(tp.MinLapTimeSec)*time.Second {
 					return nil
 				}
 			}
 			recTODfromStart := r.TOD.Sub(waveStartTime)
-			_, startExists := pr.ResultsForTPs[startingTP.ID]
+			var startCalculated bool
+			if startingTP != nil {
+				_, startCalculated = pr.Results[startingTP.ID]
+			}
 
 			res.TimingPointID = tp.ID
 			// Calculate gun time
 			res.GunTime = recTODfromStart
 
+			// TODO add test case with absent start point
 			// Calculate net time
-			if tp.Type == entity.TPTypeStart || (tp.Type != entity.TPTypeStart && !startExists) {
+			if tp.Type == entity.TPTypeStart || (tp.Type != entity.TPTypeStart && !startCalculated) || startingTP == nil {
 				res.NetTime = recTODfromStart
 			} else {
-				res.NetTime = r.TOD.Sub(pr.ResultsForTPs[startingTP.ID].TOD)
+				res.NetTime = r.TOD.Sub(pr.Results[startingTP.ID].TOD)
 			}
 
 			// Calculate TOD

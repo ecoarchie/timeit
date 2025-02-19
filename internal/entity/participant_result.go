@@ -9,9 +9,11 @@ import (
 
 type ParticipantResult struct {
 	*Participant
-	ResultsForTPs `json:"results"`
+	Results `json:"results"`
 }
-type TimingPointID = uuid.UUID
+type (
+	BoxName = string
+)
 
 type TimingPointResult struct {
 	TimingPointID uuid.UUID     `json:"timing_point_id"`
@@ -20,17 +22,17 @@ type TimingPointResult struct {
 	NetTime       time.Duration `json:"net_time"`
 }
 
-type ResultsForTPs map[TimingPointID]*TimingPointResult
+type Results map[TimingPointID]*TimingPointResult
 
 func NewParticipantResults(p *Participant) *ParticipantResult {
 	return &ParticipantResult{
 		p,
-		make(ResultsForTPs),
+		make(Results),
 	}
 }
 
 func (pr *ParticipantResult) String() string {
-	return fmt.Sprintf("{Participant:%v\nresults:%v}", pr.Participant, pr.ResultsForTPs)
+	return fmt.Sprintf("{Participant:%v\nresults:%v}", pr.Participant, pr.Results)
 }
 
 func (tp *TimingPointResult) String() string {

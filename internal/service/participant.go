@@ -9,13 +9,18 @@ import (
 	"github.com/google/uuid"
 )
 
-type ParticipantEditor interface{}
+type ParticipantManager interface {
+	CreateParticipant(req entity.ParticipantCreateRequest) (*entity.Participant, error)
+	UpdateParticipant(req entity.ParticipantUpdateRequest) (*entity.Participant, error)
+	DeleteParticipant(raceID, id uuid.UUID) error
+}
 
 type ParticipantRepo interface {
 	SaveParticipant(p *entity.Participant) error
 	GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error)
 	GetParticipantWithChip(chip int) (*entity.Participant, error)
-	// GetParticipantByID(id uuid.UUID) *entity.Participant
+	GetParticipantByID(id uuid.UUID) (*entity.Participant, error)
+	DeleteParticipant(raceID uuid.UUID, id uuid.UUID) error
 }
 
 type ParticipantService struct {
@@ -30,10 +35,10 @@ func NewParticipantService(logger logger.Interface, repo ParticipantRepo) *Parti
 	}
 }
 
-func (ps ParticipantService) CreateParticipant(req entity.ParticipantCreateRequest) (uuid.UUID, error) {
+func (ps ParticipantService) CreateParticipant(req entity.ParticipantCreateRequest) (*entity.Participant, error) {
 	p, err := entity.NewParticipant(req)
 	if err != nil {
-		return uuid.Nil, err
+		return nil, err
 	}
 
 	if !req.CategoryID.Valid {
@@ -42,11 +47,11 @@ func (ps ParticipantService) CreateParticipant(req entity.ParticipantCreateReque
 
 	err = ps.repo.SaveParticipant(p)
 	if err != nil {
-		return uuid.Nil, err
+		return nil, err
 	}
 
 	// TODO create and store entity EventParticipant. DO it in repo layer in transaction
-	return p.ID, nil
+	return p, nil
 }
 
 func (ps ParticipantService) assignCategory(p *entity.Participant) error {
@@ -55,5 +60,35 @@ func (ps ParticipantService) assignCategory(p *entity.Participant) error {
 		return fmt.Errorf("error assigning category for participant with bib %d", p.Bib)
 	}
 	p.CategoryID = catID
+	return nil
+}
+
+func (ps ParticipantService) UpdateParticipant(req entity.ParticipantUpdateRequest) (*entity.Participant, error) {
+	p, err := ps.repo.GetParticipantByID(req.ID)
+	if err != nil {
+		return nil, fmt.Errorf("updateParticipant: participant with ID %s not found", req.ID)
+	}
+	newP, err := entity.NewParticipant(req.ParticipantCreateRequest)
+	if err != nil {
+		return nil, err
+	}
+	newP.ID = p.ID
+
+	err = ps.repo.SaveParticipant(newP)
+	if err != nil {
+		return nil, err
+	}
+	return newP, nil
+}
+
+func (ps ParticipantService) DeleteParticipant(raceID, id uuid.UUID) error {
+	_, err := ps.repo.GetParticipantByID(id)
+	if err != nil {
+		return fmt.Errorf("deleteParticipant: participant with ID %s not found", id)
+	}
+	err = ps.repo.DeleteParticipant(raceID, id)
+	if err != nil {
+		return fmt.Errorf("delete participant: error deleting participant from DB")
+	}
 	return nil
 }

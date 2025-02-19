@@ -38,6 +38,11 @@ type ParticipantCreateRequest struct {
 	Comments    string         `json:"comments"`
 }
 
+type ParticipantUpdateRequest struct {
+	ID uuid.UUID
+	ParticipantCreateRequest
+}
+
 func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 	if req.RaceID == uuid.Nil {
 		return nil, fmt.Errorf("participant must have race assigned")
@@ -64,16 +69,16 @@ func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 	}
 
 	// birth date check
-	const zeroBirthDate = "1900-Jan-01"
+	const zeroBirthDate = "1900-01-01"
 	zbd, err := time.Parse(time.DateOnly, zeroBirthDate)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing zero birth date")
 	}
-	if req.DateOfBirth.Before(zbd) {
-		return nil, fmt.Errorf("participant's birth year is less than 1900")
-	}
 	if req.DateOfBirth.IsZero() {
 		req.DateOfBirth = zbd
+	}
+	if req.DateOfBirth.Before(zbd) {
+		return nil, fmt.Errorf("participant's birth year is less than 1900")
 	}
 
 	id := uuid.New()

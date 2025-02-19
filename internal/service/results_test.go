@@ -143,7 +143,19 @@ var recs4 = []entity.BoxRecord{ // Missing starting record
 	},
 	{
 		Chip:    103,
+		TOD:     time.Date(2025, 6, 1, 8, 5, 1, 0, time.UTC),
+		BoxName: "box_cp1",
+		CanUse:  true,
+	},
+	{
+		Chip:    103,
 		TOD:     time.Date(2025, 6, 1, 8, 10, 0, 0, time.UTC),
+		BoxName: "box_finish",
+		CanUse:  true,
+	},
+	{
+		Chip:    103,
+		TOD:     time.Date(2025, 6, 1, 8, 10, 1, 0, time.UTC),
 		BoxName: "box_finish",
 		CanUse:  true,
 	},
@@ -163,15 +175,15 @@ func TestGetResult(t *testing.T) {
 
 		assert.NotNil(t, result)
 		assert.Equal(t, p1.Chip, result.Chip)
-		assert.Equal(t, time.Duration(0), result.ResultsForTPs[tpsForStandartEvent[0].ID].GunTime)
-		assert.Equal(t, time.Duration(0), result.ResultsForTPs[tpsForStandartEvent[0].ID].NetTime)
-		assert.Equal(t, w.StartTime, result.ResultsForTPs[tpsForStandartEvent[0].ID].TOD)
-		assert.Equal(t, (5 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[1].ID].GunTime)
-		assert.Equal(t, (5 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[1].ID].NetTime)
-		assert.Equal(t, w.StartTime.Add(5*time.Minute), result.ResultsForTPs[tpsForStandartEvent[1].ID].TOD)
-		assert.Equal(t, (10 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].GunTime)
-		assert.Equal(t, (10 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].NetTime)
-		assert.Equal(t, w.StartTime.Add(10*time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].TOD)
+		assert.Equal(t, time.Duration(0), result.Results[tpsForStandartEvent[0].ID].GunTime)
+		assert.Equal(t, time.Duration(0), result.Results[tpsForStandartEvent[0].ID].NetTime)
+		assert.Equal(t, w.StartTime, result.Results[tpsForStandartEvent[0].ID].TOD)
+		assert.Equal(t, (5 * time.Minute), result.Results[tpsForStandartEvent[1].ID].GunTime)
+		assert.Equal(t, (5 * time.Minute), result.Results[tpsForStandartEvent[1].ID].NetTime)
+		assert.Equal(t, w.StartTime.Add(5*time.Minute), result.Results[tpsForStandartEvent[1].ID].TOD)
+		assert.Equal(t, (10 * time.Minute), result.Results[tpsForStandartEvent[2].ID].GunTime)
+		assert.Equal(t, (10 * time.Minute), result.Results[tpsForStandartEvent[2].ID].NetTime)
+		assert.Equal(t, w.StartTime.Add(10*time.Minute), result.Results[tpsForStandartEvent[2].ID].TOD)
 	})
 
 	t.Run("Valid records with 2 recs for intermediate point should skip second one", func(t *testing.T) {
@@ -183,15 +195,15 @@ func TestGetResult(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, p2.Chip, result.Chip)
-		assert.Equal(t, (time.Minute * 1), result.ResultsForTPs[tpsForStandartEvent[0].ID].GunTime)
-		assert.Equal(t, (time.Minute * 1), result.ResultsForTPs[tpsForStandartEvent[0].ID].NetTime)
-		assert.Equal(t, w.StartTime.Add(time.Minute*1), result.ResultsForTPs[tpsForStandartEvent[0].ID].TOD)
-		assert.Equal(t, checkpoint1for2participantGun, result.ResultsForTPs[tpsForStandartEvent[1].ID].GunTime)
-		assert.Equal(t, checkpoint1for2participantNet, result.ResultsForTPs[tpsForStandartEvent[1].ID].NetTime)
-		assert.Equal(t, time.Date(2025, 6, 1, 8, 4, 59, 0, time.UTC), result.ResultsForTPs[tpsForStandartEvent[1].ID].TOD)
-		assert.Equal(t, (10 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].GunTime)
-		assert.Equal(t, (9 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].NetTime)
-		assert.Equal(t, w.StartTime.Add(10*time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].TOD)
+		assert.Equal(t, (time.Minute * 1), result.Results[tpsForStandartEvent[0].ID].GunTime)
+		assert.Equal(t, (time.Minute * 1), result.Results[tpsForStandartEvent[0].ID].NetTime)
+		assert.Equal(t, w.StartTime.Add(time.Minute*1), result.Results[tpsForStandartEvent[0].ID].TOD)
+		assert.Equal(t, checkpoint1for2participantGun, result.Results[tpsForStandartEvent[1].ID].GunTime)
+		assert.Equal(t, checkpoint1for2participantNet, result.Results[tpsForStandartEvent[1].ID].NetTime)
+		assert.Equal(t, time.Date(2025, 6, 1, 8, 4, 59, 0, time.UTC), result.Results[tpsForStandartEvent[1].ID].TOD)
+		assert.Equal(t, (10 * time.Minute), result.Results[tpsForStandartEvent[2].ID].GunTime)
+		assert.Equal(t, (9 * time.Minute), result.Results[tpsForStandartEvent[2].ID].NetTime)
+		assert.Equal(t, w.StartTime.Add(10*time.Minute), result.Results[tpsForStandartEvent[2].ID].TOD)
 	})
 
 	t.Run("Valid records. 2 Start recs should be skipped", func(t *testing.T) {
@@ -203,15 +215,15 @@ func TestGetResult(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, p3.Chip, result.Chip)
-		assert.Equal(t, (time.Minute*1 + time.Second*1), result.ResultsForTPs[tpsForStandartEvent[0].ID].GunTime)
-		assert.Equal(t, (time.Minute*1 + time.Second*1), result.ResultsForTPs[tpsForStandartEvent[0].ID].NetTime)
-		assert.Equal(t, w.StartTime.Add(time.Minute*1+time.Second*1), result.ResultsForTPs[tpsForStandartEvent[0].ID].TOD)
-		assert.Equal(t, checkpoint1for3participantGun, result.ResultsForTPs[tpsForStandartEvent[1].ID].GunTime)
-		assert.Equal(t, checkpoint1for3participantNet, result.ResultsForTPs[tpsForStandartEvent[1].ID].NetTime)
-		assert.Equal(t, time.Date(2025, 6, 1, 8, 4, 59, 0, time.UTC), result.ResultsForTPs[tpsForStandartEvent[1].ID].TOD)
-		assert.Equal(t, (10 * time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].GunTime)
-		assert.Equal(t, (8*time.Minute + time.Second*59), result.ResultsForTPs[tpsForStandartEvent[2].ID].NetTime)
-		assert.Equal(t, w.StartTime.Add(10*time.Minute), result.ResultsForTPs[tpsForStandartEvent[2].ID].TOD)
+		assert.Equal(t, (time.Minute*1 + time.Second*1), result.Results[tpsForStandartEvent[0].ID].GunTime)
+		assert.Equal(t, (time.Minute*1 + time.Second*1), result.Results[tpsForStandartEvent[0].ID].NetTime)
+		assert.Equal(t, w.StartTime.Add(time.Minute*1+time.Second*1), result.Results[tpsForStandartEvent[0].ID].TOD)
+		assert.Equal(t, checkpoint1for3participantGun, result.Results[tpsForStandartEvent[1].ID].GunTime)
+		assert.Equal(t, checkpoint1for3participantNet, result.Results[tpsForStandartEvent[1].ID].NetTime)
+		assert.Equal(t, time.Date(2025, 6, 1, 8, 4, 59, 0, time.UTC), result.Results[tpsForStandartEvent[1].ID].TOD)
+		assert.Equal(t, (10 * time.Minute), result.Results[tpsForStandartEvent[2].ID].GunTime)
+		assert.Equal(t, (8*time.Minute + time.Second*59), result.Results[tpsForStandartEvent[2].ID].NetTime)
+		assert.Equal(t, w.StartTime.Add(10*time.Minute), result.Results[tpsForStandartEvent[2].ID].TOD)
 	})
 
 	t.Run("Missing starting record", func(t *testing.T) {
@@ -223,19 +235,19 @@ func TestGetResult(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, p4.Chip, result.Chip)
-		assert.Nil(t, result.ResultsForTPs[tpsForStandartEvent[0].ID])
+		assert.Nil(t, result.Results[tpsForStandartEvent[0].ID])
 
-		checkpointGun := result.ResultsForTPs[tpsForStandartEvent[1].ID].GunTime
-		checkpointNet := result.ResultsForTPs[tpsForStandartEvent[1].ID].NetTime
-		checkpointTOD := result.ResultsForTPs[tpsForStandartEvent[1].ID].TOD
+		checkpointGun := result.Results[tpsForStandartEvent[1].ID].GunTime
+		checkpointNet := result.Results[tpsForStandartEvent[1].ID].NetTime
+		checkpointTOD := result.Results[tpsForStandartEvent[1].ID].TOD
 
 		assert.Equal(t, checkpoint1for4participantGun, checkpointGun)
 		assert.Equal(t, checkpoint1for4participantNet, checkpointNet)
 		assert.Equal(t, time.Date(2025, 6, 1, 8, 5, 0, 0, time.UTC), checkpointTOD)
 
-		finishGun := result.ResultsForTPs[tpsForStandartEvent[2].ID].GunTime
-		finishNet := result.ResultsForTPs[tpsForStandartEvent[2].ID].NetTime
-		finishTOD := result.ResultsForTPs[tpsForStandartEvent[2].ID].TOD
+		finishGun := result.Results[tpsForStandartEvent[2].ID].GunTime
+		finishNet := result.Results[tpsForStandartEvent[2].ID].NetTime
+		finishTOD := result.Results[tpsForStandartEvent[2].ID].TOD
 		assert.Equal(t, (10 * time.Minute), finishGun)
 		assert.Equal(t, (10 * time.Minute), finishNet)
 		assert.Equal(t, finishGun, finishNet, "Guntime and Net time must be equal")
