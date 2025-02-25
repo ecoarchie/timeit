@@ -7,24 +7,24 @@ import (
 	"github.com/google/uuid"
 )
 
-type ParticipantRepoMock struct{}
+type AthleteRepoMock struct{}
 
-func (prm ParticipantRepoMock) SaveParticipant(p *entity.Participant) error {
+func (prm AthleteRepoMock) SaveAthlete(p *entity.Athlete) error {
 	return nil
 }
 
-func (prm ParticipantRepoMock) GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error) {
+func (prm AthleteRepoMock) GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error) {
 	return uuid.NullUUID{}, nil
 }
 
-func (prm ParticipantRepoMock) GetParticipantWithChip(chip int) (*entity.Participant, error) {
+func (prm AthleteRepoMock) GetAthleteWithChip(chip int) (*entity.Athlete, error) {
 	return nil, nil
 }
 
-func (prm ParticipantRepoMock) GetParticipantByID(id uuid.UUID) (*entity.Participant, error) {
+func (prm AthleteRepoMock) GetAthleteByID(raceID, athleteID uuid.UUID) (*entity.Athlete, error) {
 	return nil, nil
 }
 
-func (prm ParticipantRepoMock) DeleteParticipant(raceID uuid.UUID, id uuid.UUID) error {
+func (prm AthleteRepoMock) DeleteAthlete(raceID uuid.UUID, id uuid.UUID) error {
 	return nil
 }

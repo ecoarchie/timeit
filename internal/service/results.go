@@ -8,72 +8,73 @@ import (
 )
 
 type ResultsManager interface {
-	ResultForParticipant(id uuid.UUID) *entity.ParticipantResult
+	ResultForAthlete(id uuid.UUID) *entity.AthleteResult
 }
 
 type ResultsService struct {
-	ParticipantRepo ParticipantRepo
+	AthleteRepo AthleteRepo
 }
 
-func NewResultsService(repo ParticipantRepo) *ResultsService {
+func NewResultsService(repo AthleteRepo) *ResultsService {
 	return &ResultsService{
-		ParticipantRepo: repo,
+		AthleteRepo: repo,
 	}
 }
 
 // TODO
-func (rs ResultsService) ResultForParticipant(id uuid.UUID) *entity.ParticipantResult {
+func (rs ResultsService) ResultForAthlete(id uuid.UUID) *entity.AthleteResult {
 	return nil
 }
 
 // TODO
-func (rs ResultsService) GetResults(pr *entity.ParticipantResult, recs []entity.BoxRecord, waveStartTime time.Time, tps []*entity.TimingPoint) (*entity.ParticipantResult, error) {
-	// tps are timing points for participants' event from race cache
+func (rs ResultsService) GetResults(pr *entity.AthleteResult, recs []entity.ReaderRecord, waveStartTime time.Time, tps []*entity.Split) (*entity.AthleteResult, error) {
+	// tps are splits for athletes' event from race cache
 	// tps are sorted by distance from start
-	// recs are only for particular participant chip, sorted by TOD
+	// recs are only for particular athlete chip, sorted by TOD
 	// resc must be valid, canUse = true
-	// wave is participants' wave. assuming that wave status is 'started'
-	tpBoxes := make(map[entity.BoxName][]*entity.TimingPoint)
-	var startingTP *entity.TimingPoint
-	// ps := entity.NewParticipantResults(participant)
+	// wave is athletes' wave. assuming that wave status is 'started'
+	tpBoxes := make(map[TimeReaderID][]*entity.Split)
+	var startingSplit *entity.Split
+	// ps := entity.NewAthleteResults(athlete)
 	for _, tp := range tps {
-		tpBoxes[tp.BoxName] = append(tpBoxes[tp.BoxName], tp)
-		if tp.Type == entity.TPTypeStart {
-			startingTP = tp
+		tpBoxes[tp.TimeReaderID] = append(tpBoxes[tp.TimeReaderID], tp)
+		if tp.Type == entity.SplitTypeStart {
+			startingSplit = tp
 		}
 	}
 	for _, r := range recs {
-		res := rs.ResultForRecord(r, waveStartTime, tpBoxes[r.BoxName], pr, startingTP)
+		// BUG r.RaceID should be r.ReaderName. But since tp doesn't have boxname field - I need to rewrite logic completly
+		res := rs.ResultForRecord(r, waveStartTime, tpBoxes[r.RaceID], pr, startingSplit)
 		if res == nil {
 			continue
 		}
-		// BUG check if timing point of type 'start' doesn't exist at all
-		_, exists := pr.Results[res.TimingPointID]
-		if exists && res.TimingPointID != startingTP.ID {
-			// TODO skip creating result for finish and standard types of TPs. Later the rule for finish and standard type may change from 'first read' to 'last read'
+		// BUG check if split of type 'start' doesn't exist at all
+		_, exists := pr.Results[res.SplitID]
+		if exists && res.SplitID != startingSplit.ID {
+			// TODO skip creating result for finish and standard types of Splits. Later the rule for finish and standard type may change from 'first read' to 'last read'
 			continue
 		}
 		// BUG check for prevlap rule. After that delete pr passed to ResultForRecord func
-		pr.Results[res.TimingPointID] = res
+		pr.Results[res.SplitID] = res
 	}
 	return pr, nil
 }
 
-func (rs ResultsService) ResultForRecord(r entity.BoxRecord, waveStartTime time.Time, tps []*entity.TimingPoint, pr *entity.ParticipantResult, startingTP *entity.TimingPoint) *entity.TimingPointResult {
+func (rs ResultsService) ResultForRecord(r entity.ReaderRecord, waveStartTime time.Time, tps []*entity.Split, pr *entity.AthleteResult, startingSplit *entity.Split) *entity.SplitResult {
 	if r.TOD.Before(waveStartTime) {
 		// record is before wave start, thus check next record
 		return nil
 	}
-	res := &entity.TimingPointResult{}
+	res := &entity.SplitResult{}
 	for i, tp := range tps {
-		// if tp.Type == entity.TPTypeFinish || tp.Type == entity.TPTypeStandard {
-		// 	// if there is already result for standard or finish TP then skip
+		// if tp.Type == entity.SplitTypeFinish || tp.Type == entity.SplitTypeStandard {
+		// 	// if there is already result for standard or finish Split then skip
 		// 	if _, ok := ps.Results[tp.ID]; ok {
 		// 		return nil
 		// 	}
 		// }
-		// ps.Results[tp.ID] = &entity.TimingPointResult{
-		// 	TimingPointID: tp.ID,
+		// ps.Results[tp.ID] = &entity.SplitResult{
+		// 	SplitID: tp.ID,
 		// }
 		validMinTime := waveStartTime.Add(time.Duration(tp.MinTimeSec))
 		var validMaxTime time.Time
@@ -84,33 +85,33 @@ func (rs ResultsService) ResultForRecord(r entity.BoxRecord, waveStartTime time.
 		}
 		if (r.TOD.Equal(validMinTime) || r.TOD.After(validMinTime)) && (r.TOD.Equal(validMaxTime) || r.TOD.Before(validMaxTime)) {
 			if i > 0 {
-				prevLapTP := tps[i-1]
-				if r.TOD.Sub(pr.Results[prevLapTP.ID].TOD) < time.Duration(tp.MinLapTimeSec)*time.Second {
+				prevLapSplit := tps[i-1]
+				if r.TOD.Sub(pr.Results[prevLapSplit.ID].TOD) < time.Duration(tp.MinLapTimeSec)*time.Second {
 					return nil
 				}
 			}
 			recTODfromStart := r.TOD.Sub(waveStartTime)
 			var startCalculated bool
-			if startingTP != nil {
-				_, startCalculated = pr.Results[startingTP.ID]
+			if startingSplit != nil {
+				_, startCalculated = pr.Results[startingSplit.ID]
 			}
 
-			res.TimingPointID = tp.ID
+			res.SplitID = tp.ID
 			// Calculate gun time
 			res.GunTime = recTODfromStart
 
 			// TODO add test case with absent start point
 			// Calculate net time
-			if tp.Type == entity.TPTypeStart || (tp.Type != entity.TPTypeStart && !startCalculated) || startingTP == nil {
+			if tp.Type == entity.SplitTypeStart || (tp.Type != entity.SplitTypeStart && !startCalculated) || startingSplit == nil {
 				res.NetTime = recTODfromStart
 			} else {
-				res.NetTime = r.TOD.Sub(pr.Results[startingTP.ID].TOD)
+				res.NetTime = r.TOD.Sub(pr.Results[startingSplit.ID].TOD)
 			}
 
 			// Calculate TOD
 			res.TOD = r.TOD
 
-			// skip checking the rest timming points for that box_name
+			// skip checking the rest timming points for that reader_name
 			return res
 		}
 	}

@@ -22,8 +22,37 @@ func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Ha
 		l:   l,
 	}
 	r := chi.NewRouter()
+	r.Post("/", rr.createRace)
+	r.Get("/{race_id}", rr.getRace)
 	r.Post("/save", rr.saveRaceConfig)
 	return r
+}
+
+func (rr *raceRoutes) getRace(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "race_id")
+	rr.rcs.GetRaceConfig(r.Context(), id)
+}
+
+func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
+	var req *entity.RaceFormData
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		rr.l.Error("error parsing new race form", err)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(err.Error())
+		return
+	}
+	race, err := rr.rcs.CreateRace(r.Context(), req)
+	if err != nil {
+		rr.l.Error("error creating race", err)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(race)
+	// w.WriteHeader(http.StatusOK)
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +80,6 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-// func (rr *raceRoutes) getResultsForParticipant(w http.ResponseWriter, r *http.Request) {
-// 	rr.results.ResultsForParticipant()
+// func (rr *raceRoutes) getResultsForAthlete(w http.ResponseWriter, r *http.Request) {
+// 	rr.results.ResultsForAthlete()
 // }

@@ -24,5 +24,8 @@ go.work.sum
 # examples
 example.json
 
+# temp files
+tmp
+
 todos.md
 TODO

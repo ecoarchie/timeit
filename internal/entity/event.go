@@ -34,3 +34,13 @@ func NewEvent(raceID uuid.UUID, name string, distanse int, eventDate time.Time) 
 		EventDate:        eventDate,
 	}, nil
 }
+
+func (e Event) String() string {
+	return fmt.Sprintf(`{
+	ID: %s,
+	RaceID: %s,
+	Name: %s,
+	DistanceInMeters: %d,
+	EventDate: %s
+}`, e.ID.String(), e.RaceID.String(), e.Name, e.DistanceInMeters, e.EventDate.String())
+}

@@ -9,34 +9,34 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createRace = `-- name: CreateRace :one
-INSERT INTO races (id, name, race_date, timezone) VALUES ($1, $2, $3, $4)
-RETURNING id, name, race_date, timezone
+const addRace = `-- name: AddRace :one
+INSERT INTO races (id, name, timezone) VALUES ($1, $2, $3)
+ON CONFLICT (id) DO UPDATE
+SET name=EXCLUDED.name, timezone=EXCLUDED.timezone
+RETURNING id, name, timezone
 `
 
-type CreateRaceParams struct {
+type AddRaceParams struct {
 	ID       uuid.UUID
 	Name     string
-	RaceDate pgtype.Date
 	Timezone string
 }
 
-func (q *Queries) CreateRace(ctx context.Context, arg CreateRaceParams) (Race, error) {
-	row := q.db.QueryRow(ctx, createRace,
-		arg.ID,
-		arg.Name,
-		arg.RaceDate,
-		arg.Timezone,
-	)
+func (q *Queries) AddRace(ctx context.Context, arg AddRaceParams) (Race, error) {
+	row := q.db.QueryRow(ctx, addRace, arg.ID, arg.Name, arg.Timezone)
 	var i Race
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.RaceDate,
-		&i.Timezone,
-	)
+	err := row.Scan(&i.ID, &i.Name, &i.Timezone)
 	return i, err
+}
+
+const deleteRace = `-- name: DeleteRace :exec
+DELETE FROM races
+WHERE id=$1
+`
+
+func (q *Queries) DeleteRace(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRace, id)
+	return err
 }

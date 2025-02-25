@@ -13,7 +13,7 @@ type Race struct {
 	Timezone string    `json:"timezone"`
 }
 
-func NewRace(req RaceFormData) (*Race, error) {
+func NewRace(req *RaceFormData) (*Race, error) {
 	if err := IsValidTimezone(req.Timezone); err != nil {
 		return nil, err
 	}

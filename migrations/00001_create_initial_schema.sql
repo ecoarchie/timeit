@@ -43,48 +43,59 @@ CREATE TABLE categories (
   from_race_date BOOLEAN NOT NULL DEFAULT FALSE,
   to_age INTEGER NOT NULL,
   to_race_date BOOLEAN NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (race_id, event_id, id),
-  CHECK (from_age <= to_age)
+  PRIMARY KEY (id),
+  CHECK (from_age <= to_age),
+  UNIQUE (id, race_id, event_id)
 );
 
 
--- Table: box_records
-CREATE TABLE box_records (
+-- Table: reader_records
+CREATE TABLE reader_records (
   id SERIAL PRIMARY KEY,
-  race_id UUID NOT NULL REFERENCES races(id),
+  race_id UUID NOT NULL,
   chip INTEGER NOT NULL,
   tod TIMESTAMPTZ NOT NULL,
-  box_name TEXT NOT NULL,
+  reader_name TEXT NOT NULL,
   can_use BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- Performance indexes for box_records
-CREATE INDEX idx_box_records_chip_box_name ON box_records (chip, box_name);
-CREATE INDEX idx_box_records_race_chip ON box_records (race_id, chip);
+-- Performance indexes for reader_records
+CREATE INDEX idx_box_records_chip_reader_name ON reader_records (chip, reader_name);
+CREATE INDEX idx_box_records_race_chip ON reader_records (race_id, chip);
+
+-- Table: time_readers
+CREATE TABLE time_readers (
+  id UUID NOT NULL,
+  race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+  reader_name TEXT NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (race_id, reader_name)
+);
 
 -- Enum: tp_type
 DROP TYPE IF EXISTS tp_type;
 CREATE TYPE tp_type AS ENUM ('start', 'standard', 'finish');
 
 
--- Table: timing_points
-CREATE TABLE timing_points (
+-- Table: splits
+CREATE TABLE splits (
   id UUID NOT NULL,
   race_id UUID NOT NULL,
   event_id UUID NOT NULL,
   name TEXT NOT NULL,
   type tp_type NOT NULL,
   distance_from_start INTEGER NOT NULL,
-  box_name TEXT NOT NULL,
+  time_reader_id UUID NOT NULL,
   min_time_sec INTEGER DEFAULT 0,
   max_time_sec INTEGER DEFAULT 0,
   min_lap_time_sec INTEGER DEFAULT 0,
   PRIMARY KEY (race_id, event_id, id),
-  FOREIGN KEY (race_id, event_id) REFERENCES events (race_id, id) ON DELETE CASCADE
+  FOREIGN KEY (race_id, event_id) REFERENCES events (race_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (time_reader_id) REFERENCES time_readers(id) ON DELETE CASCADE
 );
 
--- Table: participants
-CREATE TABLE participants (
+-- Table: athletes
+CREATE TABLE athletes (
   id UUID PRIMARY KEY,
   race_id UUID NOT NULL,
   first_name TEXT DEFAULT 'athlete',
@@ -98,71 +109,56 @@ CREATE TABLE participants (
   FOREIGN KEY (race_id) REFERENCES races (id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_participants_first_last ON participants (first_name, last_name);
+CREATE INDEX idx_athletes_first_last ON athletes (first_name, last_name);
 
--- Table: event_participant
-CREATE TABLE event_participant (
+-- Table: event_athlete
+CREATE TABLE event_athlete (
   race_id UUID NOT NULL,
   event_id UUID NOT NULL,
-  participant_id UUID NOT NULL REFERENCES participants(id),
+  athlete_id UUID NOT NULL REFERENCES athletes(id),
   wave_id UUID NOT NULL,
   category_id UUID,
   bib INTEGER,
-  PRIMARY KEY (race_id, event_id, participant_id)
+  PRIMARY KEY (race_id, event_id, athlete_id),
+  FOREIGN KEY (race_id) REFERENCES races (id) ON DELETE CASCADE
 );
 
 -- Table: chip_bib
 CREATE TABLE chip_bib (
-  race_id UUID NOT NULL,
+  race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
   event_id UUID NOT NULL,
   chip INTEGER NOT NULL,
   bib INTEGER NOT NULL,
   PRIMARY KEY (chip, bib, race_id, event_id)
 );
 
--- Table: physical_locations
-CREATE TABLE physical_locations (
-  race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
-  box_name TEXT NOT NULL,
-  PRIMARY KEY (race_id, box_name)
-);
-
--- Table: event_location
-CREATE TABLE event_location (
-  event_id UUID NOT NULL REFERENCES events(id),
-  race_id UUID NOT NULL,
-  box_name TEXT NOT NULL,
-  PRIMARY KEY (event_id, race_id, box_name),
-  FOREIGN KEY (race_id, box_name) REFERENCES physical_locations(race_id, box_name) 
-);
-
--- Table: participant_timing_point
-CREATE TABLE participant_timing_point (
+-- Table: athlete_split
+CREATE TABLE athlete_split (
   race_id UUID NOT NULL,
   event_id UUID NOT NULL,
-  timing_point_id UUID NOT NULL,
-  participant_id UUID NOT NULL,
+  split_id UUID NOT NULL,
+  athlete_id UUID NOT NULL,
   tod TIMESTAMP NOT NULL,
   gun_time BIGINT NOT NULL,
   net_time BIGINT NOT NULL,
-  PRIMARY KEY (race_id, event_id, timing_point_id, participant_id)
+  PRIMARY KEY (race_id, event_id, split_id, athlete_id),
+  FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE 
 );
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS box_records;
-DROP TABLE IF EXISTS chip_bib;
-DROP TABLE IF EXISTS event_location;
-DROP TABLE IF EXISTS event_participant;
-DROP TABLE IF EXISTS physical_locations;
-DROP TABLE IF EXISTS participant_timing_point;
-DROP TABLE IF EXISTS participants;
+DROP TABLE IF EXISTS event_athlete;
+DROP TABLE IF EXISTS splits;
+DROP TABLE IF EXISTS time_readers;
+DROP TABLE IF EXISTS athlete_split;
+DROP TABLE IF EXISTS athletes;
 DROP TABLE IF EXISTS waves;
 DROP TABLE IF EXISTS categories;
-DROP TABLE IF EXISTS timing_points;
 DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS reader_records;
+DROP TABLE IF EXISTS chip_bib;
 DROP TABLE IF EXISTS races;
 
 DROP TYPE IF EXISTS category_gender;

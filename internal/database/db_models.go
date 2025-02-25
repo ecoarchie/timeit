@@ -99,13 +99,27 @@ func (ns NullTpType) Value() (driver.Value, error) {
 	return string(ns.TpType), nil
 }
 
-type BoxRecord struct {
-	ID      int32
-	RaceID  uuid.UUID
-	Chip    int32
-	Tod     pgtype.Timestamptz
-	BoxName string
-	CanUse  bool
+type Athlete struct {
+	ID          uuid.UUID
+	RaceID      uuid.UUID
+	FirstName   pgtype.Text
+	LastName    pgtype.Text
+	Gender      CategoryGender
+	DateOfBirth pgtype.Date
+	Phone       pgtype.Text
+	Comments    pgtype.Text
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type AthleteSplit struct {
+	RaceID    uuid.UUID
+	EventID   uuid.UUID
+	SplitID   uuid.UUID
+	AthleteID uuid.UUID
+	Tod       pgtype.Timestamp
+	GunTime   int64
+	NetTime   int64
 }
 
 type Category struct {
@@ -135,65 +149,47 @@ type Event struct {
 	EventDate        pgtype.Timestamptz
 }
 
-type EventLocation struct {
-	EventID uuid.UUID
-	RaceID  uuid.UUID
-	BoxName string
-}
-
-type EventParticipant struct {
-	RaceID        uuid.UUID
-	EventID       uuid.UUID
-	ParticipantID uuid.UUID
-	WaveID        uuid.UUID
-	CategoryID    uuid.UUID
-	Bib           pgtype.Int4
-}
-
-type Participant struct {
-	ID          uuid.UUID
-	FirstName   pgtype.Text
-	LastName    pgtype.Text
-	Gender      CategoryGender
-	DateOfBirth pgtype.Date
-	Phone       pgtype.Text
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-}
-
-type ParticipantTimingPoint struct {
-	RaceID        uuid.UUID
-	EventID       uuid.UUID
-	TimingPointID uuid.UUID
-	ParticipantID uuid.UUID
-	Tod           pgtype.Timestamp
-	GunTime       int64
-	NetTime       int64
-}
-
-type PhysicalLocation struct {
-	RaceID  uuid.UUID
-	BoxName string
+type EventAthlete struct {
+	RaceID     uuid.UUID
+	EventID    uuid.UUID
+	AthleteID  uuid.UUID
+	WaveID     uuid.UUID
+	CategoryID pgtype.UUID
+	Bib        pgtype.Int4
 }
 
 type Race struct {
 	ID       uuid.UUID
 	Name     string
-	RaceDate pgtype.Date
 	Timezone string
 }
 
-type TimingPoint struct {
+type ReaderRecord struct {
+	ID         int32
+	RaceID     uuid.UUID
+	Chip       int32
+	Tod        pgtype.Timestamptz
+	ReaderName string
+	CanUse     bool
+}
+
+type Split struct {
 	ID                uuid.UUID
 	RaceID            uuid.UUID
 	EventID           uuid.UUID
 	Name              string
 	Type              TpType
 	DistanceFromStart int32
-	BoxName           string
+	TimeReaderID      uuid.UUID
 	MinTimeSec        pgtype.Int4
 	MaxTimeSec        pgtype.Int4
 	MinLapTimeSec     pgtype.Int4
+}
+
+type TimeReader struct {
+	ID         uuid.UUID
+	RaceID     uuid.UUID
+	ReaderName string
 }
 
 type Wave struct {

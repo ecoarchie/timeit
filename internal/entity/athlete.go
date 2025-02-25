@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type Participant struct {
-	ID          uuid.UUID      `json:"participant_id"`
+type Athlete struct {
+	ID          uuid.UUID      `json:"athlete_id"`
 	RaceID      uuid.UUID      `json:"race_id"`
 	EventID     uuid.UUID      `json:"event_id"`
 	WaveID      uuid.UUID      `json:"wave_id"`
@@ -23,7 +23,7 @@ type Participant struct {
 	Comments    string         `json:"comments"`
 }
 
-type ParticipantCreateRequest struct {
+type AthleteCreateRequest struct {
 	RaceID      uuid.UUID      `json:"race_id"`
 	EventID     uuid.UUID      `json:"event_id"`
 	WaveID      uuid.UUID      `json:"wave_id"`
@@ -38,20 +38,38 @@ type ParticipantCreateRequest struct {
 	Comments    string         `json:"comments"`
 }
 
-type ParticipantUpdateRequest struct {
+type AthleteUpdateRequest struct {
 	ID uuid.UUID
-	ParticipantCreateRequest
+	AthleteCreateRequest
 }
 
-func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
+type AthleteCSV struct {
+	Event       string `csv:"event"`
+	Wave        string `csv:"wave"`
+	Bib         int    `csv:"bib"`
+	Chip        int    `csv:"tag"`
+	FirstName   string `csv:"name"`
+	LastName    string `csv:"surname"`
+	Gender      string `csv:"gender"`
+	DateOfBirth string `csv:"date of birth"`
+	Phone       string `csv:"phone"`
+	Comments    string `csv:"comments"`
+}
+
+type (
+	InvalidHeader = string
+	ValidHeader   = string
+)
+
+func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 	if req.RaceID == uuid.Nil {
-		return nil, fmt.Errorf("participant must have race assigned")
+		return nil, fmt.Errorf("athlete must have race assigned")
 	}
 	if req.EventID == uuid.Nil {
-		return nil, fmt.Errorf("participant must have event assigned")
+		return nil, fmt.Errorf("athlete must have event assigned")
 	}
 	if req.WaveID == uuid.Nil {
-		return nil, fmt.Errorf("participant must have wave assigned")
+		return nil, fmt.Errorf("athlete must have wave assigned")
 	}
 	if req.FirstName == "" {
 		req.FirstName = "athlete"
@@ -64,8 +82,8 @@ func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 	if req.Gender == "" {
 		req.Gender = "unknown"
 	}
-	if !isValidGender(req.Gender) {
-		return nil, fmt.Errorf("invalid gender for participant")
+	if !IsValidGender(req.Gender) {
+		return nil, fmt.Errorf("invalid gender for athlete")
 	}
 
 	// birth date check
@@ -78,11 +96,11 @@ func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 		req.DateOfBirth = zbd
 	}
 	if req.DateOfBirth.Before(zbd) {
-		return nil, fmt.Errorf("participant's birth year is less than 1900")
+		return nil, fmt.Errorf("athlete's birth year is less than 1900")
 	}
 
 	id := uuid.New()
-	return &Participant{
+	return &Athlete{
 		ID:          id,
 		RaceID:      req.RaceID,
 		EventID:     req.EventID,
@@ -99,7 +117,7 @@ func NewParticipant(req ParticipantCreateRequest) (*Participant, error) {
 	}, nil
 }
 
-func isValidGender(c CategoryGender) bool {
+func IsValidGender(c CategoryGender) bool {
 	switch c {
 	case CategoryGenderFemale, CategoryGenderMale, CategoryGenderMixed, CategoryGenderUnknown:
 		return true
@@ -108,8 +126,8 @@ func isValidGender(c CategoryGender) bool {
 	}
 }
 
-func RandomParticipant(name, surname string, gender CategoryGender, bib, chip int) *Participant {
-	return &Participant{
+func RandomAthlete(name, surname string, gender CategoryGender, bib, chip int) *Athlete {
+	return &Athlete{
 		ID:          uuid.New(),
 		RaceID:      uuid.New(),
 		EventID:     uuid.New(),

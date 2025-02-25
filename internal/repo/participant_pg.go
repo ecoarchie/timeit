@@ -7,28 +7,28 @@ import (
 	"github.com/google/uuid"
 )
 
-type ParticipantRepoPG struct{}
+type AthleteRepoPG struct{}
 
-func (pr ParticipantRepoPG) SaveParticipant(p *entity.Participant) error {
+func (pr AthleteRepoPG) SaveAthlete(p *entity.Athlete) error {
 	return nil
 }
 
-func (pr ParticipantRepoPG) GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error) {
+func (pr AthleteRepoPG) GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error) {
 	return uuid.NullUUID{}, nil
 }
 
-func (pr ParticipantRepoPG) GetParticipantWithChip(chip int) (*entity.Participant, error) {
+func (pr AthleteRepoPG) GetAthleteWithChip(chip int) (*entity.Athlete, error) {
 	return nil, nil
 }
 
-func (pr ParticipantRepoPG) GetParticipantByID(id uuid.UUID) (*entity.Participant, error) {
+func (pr AthleteRepoPG) GetAthleteByID(raceID, athleteID uuid.UUID) (*entity.Athlete, error) {
 	return nil, nil
 }
 
-func (pr ParticipantRepoPG) DeleteParticipant(raceID uuid.UUID, id uuid.UUID) error {
+func (pr AthleteRepoPG) DeleteAthlete(raceID uuid.UUID, id uuid.UUID) error {
 	return nil
 }
 
-func NewParticipantPGRepo() *ParticipantRepoPG {
-	return &ParticipantRepoPG{}
+func NewAthletePGRepo() *AthleteRepoPG {
+	return &AthleteRepoPG{}
 }

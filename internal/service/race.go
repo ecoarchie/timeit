@@ -15,24 +15,51 @@ import (
 
 type RaceConfigurator interface {
 	Save(ctx context.Context, rc *entity.RaceConfig) []error
+	CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error)
+	GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error)
 }
 
 type RaceRepo interface {
 	SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) error
+	GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceConfig, error)
 }
 
 type RaceService struct {
 	l         logger.Interface
-	raceCache *entity.RaceCache
+	raceCache *RaceCache
 	repo      RaceRepo
 }
 
-func NewRaceService(logger logger.Interface, rc *entity.RaceCache, repo RaceRepo) *RaceService {
+func NewRaceService(logger logger.Interface, rc *RaceCache, repo RaceRepo) *RaceService {
 	return &RaceService{
 		l:         logger,
 		raceCache: rc,
 		repo:      repo,
 	}
+}
+
+func (rc RaceService) CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error) {
+	r, err := entity.NewRace(req)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (rc RaceService) GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error) {
+	uuID, err := uuid.Parse(raceID)
+	if err != nil {
+		return nil, err
+	}
+	rconfig, err := rc.repo.GetRaceConfig(ctx, uuID)
+	if err != nil {
+		return nil, err
+	}
+	if rconfig == nil {
+		return nil, fmt.Errorf("race with id %s not found", raceID)
+	}
+
+	return rconfig, nil
 }
 
 func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) []error {
@@ -53,12 +80,13 @@ func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) []error {
 }
 
 func (rs RaceService) validate(rc *entity.RaceConfig) []error {
+	fmt.Println(rc)
 	errors := []error{}
 	if err := validateRace(rc.Race); err != nil {
 		errors = append(errors, err)
 	}
 
-	if err := validatePhysicalLocations(rc.PhysicalLocations); err != nil {
+	if err := validateTimeReaders(rc.TimeReaders); err != nil {
 		errors = append(errors, err)
 		return errors
 	}
@@ -68,7 +96,7 @@ func (rs RaceService) validate(rc *entity.RaceConfig) []error {
 		return errors
 	}
 	for _, ec := range rc.Events {
-		if err := validateEventConfig(rc.Race, rc.PhysicalLocations, ec); err != nil {
+		if err := validateEventConfig(rc.Race, rc.TimeReaders, ec); err != nil {
 			errors = append(errors, err...)
 		}
 	}
@@ -85,23 +113,23 @@ func validateRace(race *entity.Race) error {
 	return nil
 }
 
-func validatePhysicalLocations(locs []*entity.PhysicalLocation) error {
+func validateTimeReaders(locs []*entity.TimeReader) error {
 	if len(locs) == 0 {
-		return fmt.Errorf("race must have at least one physical location")
+		return fmt.Errorf("race must have at least one physical time_reader")
 	}
 	boxNames := make(map[string]struct{})
 
-	// Loop through locations and check for uniqueness
+	// Loop through time_readers and check for uniqueness
 	for _, l := range locs {
-		if _, exists := boxNames[l.BoxName]; exists {
-			return fmt.Errorf("duplicate box name found: %s", l.BoxName)
+		if _, exists := boxNames[l.ReaderName]; exists {
+			return fmt.Errorf("duplicate box name found: %s", l.ReaderName)
 		}
-		boxNames[l.BoxName] = struct{}{}
+		boxNames[l.ReaderName] = struct{}{}
 	}
 	return nil
 }
 
-func validateEventConfig(race *entity.Race, locs []*entity.PhysicalLocation, ec *entity.EventConfig) []error {
+func validateEventConfig(race *entity.Race, locs []*entity.TimeReader, ec *entity.EventConfig) []error {
 	errors := []error{}
 	if race.ID != ec.RaceID {
 		errors = append(errors, fmt.Errorf("wrong race id for event %s", ec.Name))
@@ -116,16 +144,16 @@ func validateEventConfig(race *entity.Race, locs []*entity.PhysicalLocation, ec 
 		errors = append(errors, fmt.Errorf("distance for event %s must be greater than 0", ec.Name))
 	}
 
-	if len(ec.TimingPoints) == 0 {
-		errors = append(errors, fmt.Errorf("event must have at least one timing point"))
+	if len(ec.Splits) == 0 {
+		errors = append(errors, fmt.Errorf("event must have at least one split"))
 	}
 
 	if len(errors) != 0 {
 		return errors
 	}
 
-	for _, tp := range ec.TimingPoints {
-		if err := validateTimingPoint(ec.RaceID, ec.ID, locs, tp); err != nil {
+	for _, tp := range ec.Splits {
+		if err := validateSplit(ec.RaceID, ec.ID, locs, tp); err != nil {
 			errors = append(errors, err)
 		}
 	}
@@ -153,7 +181,10 @@ func validateCategory(raceID, eventID uuid.UUID, eventDate time.Time, c *entity.
 		return fmt.Errorf("empty or invalid eventID for category")
 	}
 	if c.Name == "" {
-		return fmt.Errorf("empty timing point name")
+		return fmt.Errorf("empty split name")
+	}
+	if !entity.IsValidGender(c.Gender) {
+		return fmt.Errorf("invalid gender")
 	}
 	if c.FromAge < 0 {
 		return fmt.Errorf("from age must be greater or equal to 0")
@@ -192,7 +223,7 @@ func validateWave(raceID, eventID uuid.UUID, w *entity.Wave) error {
 	return nil
 }
 
-func validateTimingPoint(raceID, eventID uuid.UUID, locs []*entity.PhysicalLocation, tp *entity.TimingPoint) error {
+func validateSplit(raceID, eventID uuid.UUID, locs []*entity.TimeReader, tp *entity.Split) error {
 	if raceID == uuid.Nil {
 		return fmt.Errorf("empty raceID")
 	}
@@ -200,27 +231,27 @@ func validateTimingPoint(raceID, eventID uuid.UUID, locs []*entity.PhysicalLocat
 		return fmt.Errorf("wrong event id for timint point")
 	}
 	if tp.Name == "" {
-		return fmt.Errorf("empty timing point name")
+		return fmt.Errorf("empty split name")
 	}
-	if tp.Type == "" || !entity.IsValidTPType(tp.Type) {
-		return fmt.Errorf("empty or invalid timing point type")
+	if tp.Type == "" || !entity.IsValidSplitType(tp.Type) {
+		return fmt.Errorf("empty or invalid split type")
 	}
 	if tp.DistanceFromStart < 0 {
 		return fmt.Errorf("distance from start must be equal or greater than 0")
 	}
 
-	// check box name for timing point
-	if tp.BoxName == "" {
-		return fmt.Errorf("empty box name")
+	// check box name for split
+	if tp.TimeReaderID.String() == "" {
+		return fmt.Errorf("empty time_reader ID")
 	}
-	unknownBoxName := true
+	unknownBoxID := true
 	for _, l := range locs {
-		if l.BoxName == tp.BoxName {
-			unknownBoxName = false
+		if l.ID == tp.TimeReaderID {
+			unknownBoxID = false
 		}
 	}
-	if unknownBoxName {
-		return fmt.Errorf("unknown box name for timing point")
+	if unknownBoxID {
+		return fmt.Errorf("unknown box ID for split")
 	}
 
 	// check time restrictions

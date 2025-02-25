@@ -4,62 +4,62 @@ import (
 	"github.com/google/uuid"
 )
 
-type TPType string
+type SplitType string
 
 const (
-	TPTypeStart    TPType = "start"
-	TPTypeStandard TPType = "standard"
-	TPTypeFinish   TPType = "finish"
+	SplitTypeStart    SplitType = "start"
+	SplitTypeStandard SplitType = "standard"
+	SplitTypeFinish   SplitType = "finish"
 )
 
-type TimingPoint struct {
-	ID                uuid.UUID `json:"timing_point_id"`
+type Split struct {
+	ID                uuid.UUID `json:"split_id"`
 	RaceID            uuid.UUID `json:"race_id"`
 	EventID           uuid.UUID `json:"event_id"`
-	Name              string    `json:"timing_point_name"`
-	Type              TPType    `json:"timing_point_type"`
+	Name              string    `json:"split_name"`
+	Type              SplitType `json:"split_type"`
 	DistanceFromStart int       `json:"distance_from_start"`
-	BoxName           string    `json:"box_name"`
-	MinTimeSec        int64     `json:"min_time_sec"`
-	MaxTimeSec        int64     `json:"max_time_sec"`
-	MinLapTimeSec     int64     `json:"min_lap_time_sec"`
+	TimeReaderID      uuid.UUID `json:"time_reader_id"`
+	MinTimeSec        int32     `json:"min_time_sec"`
+	MaxTimeSec        int32     `json:"max_time_sec"`
+	MinLapTimeSec     int32     `json:"min_lap_time_sec"`
 }
 
-// func (tp *TimingPoint) SetValidMinMaxTimes(participantWaceStart time.Time) {
+// func (tp *Split) SetValidMinMaxTimes(athleteWaceStart time.Time) {
 // 	if tp.MinTimeSec == 0 {
-// 		tp.ValidMinTime = participantWaceStart
+// 		tp.ValidMinTime = athleteWaceStart
 // 	} else {
-// 		tp.ValidMinTime = participantWaceStart.Add(time.Duration(tp.MinTimeSec) * time.Second)
+// 		tp.ValidMinTime = athleteWaceStart.Add(time.Duration(tp.MinTimeSec) * time.Second)
 // 	}
 // 	if tp.MaxTimeSec == 0 {
-// 		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(time.Hour) * 24)
+// 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(time.Hour) * 24)
 // 	} else {
-// 		tp.ValidMaxTime = participantWaceStart.Add(time.Duration(tp.MaxTimeSec) * time.Second)
+// 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(tp.MaxTimeSec) * time.Second)
 // 	}
 // }
 
-type NewTPrequest struct {
+type NewSplitrequest struct {
 	RaceID            uuid.UUID `json:"race_id"`
 	EventID           uuid.UUID `json:"event_id"`
 	Name              string    `json:"name"`
-	Type              TPType    `json:"type"`
+	Type              SplitType `json:"type"`
 	DistanceFromStart int       `json:"distance_from_start"`
-	BoxName           string    `json:"box_name"`
+	ReaderName        string    `json:"reader_name"`
 	MinTimeSec        int64     `json:"min_time_sec"`
 	MaxTimeSec        int64     `json:"max_time_sec"`
 	MinLapTimeSec     int64     `json:"min_lap_time_sec"`
 }
 
-func IsValidTPType(tp TPType) bool {
+func IsValidSplitType(tp SplitType) bool {
 	switch tp {
-	case TPTypeStart, TPTypeFinish, TPTypeStandard:
+	case SplitTypeStart, SplitTypeFinish, SplitTypeStandard:
 		return true
 	default:
 		return false
 	}
 }
 
-// func NewTimingPoint(raceID uuid.UUID, eventID uuid.UUID, req TimingPointFormData) (*TimingPoint, error) {
+// func NewSplit(raceID uuid.UUID, eventID uuid.UUID, req SplitFormData) (*Split, error) {
 // 	if raceID == uuid.Nil {
 // 		return nil, fmt.Errorf("empty raceID")
 // 	}
@@ -67,12 +67,12 @@ func IsValidTPType(tp TPType) bool {
 // 		return nil, fmt.Errorf("empty eventID")
 // 	}
 // 	if req.Name == "" {
-// 		return nil, fmt.Errorf("empty timing point name")
+// 		return nil, fmt.Errorf("empty split name")
 // 	}
 // 	if req.DistanceFromStart < 0 {
 // 		return nil, fmt.Errorf("distance from start must be equal or greater than 0")
 // 	}
-// 	if req.BoxName == "" {
+// 	if req.ReaderName == "" {
 // 		return nil, fmt.Errorf("empty box name")
 // 	}
 // 	if req.MinTimeSec < 0 || req.MaxTimeSec < 0 || req.MinLapTimeSec < 0 {
@@ -80,29 +80,29 @@ func IsValidTPType(tp TPType) bool {
 // 	}
 
 // 	id := uuid.New()
-// 	return &TimingPoint{
+// 	return &Split{
 // 		ID:                id,
 // 		RaceID:            raceID,
 // 		EventID:           eventID,
 // 		Name:              req.Name,
 // 		Type:              req.Type,
 // 		DistanceFromStart: req.DistanceFromStart,
-// 		BoxName:           req.BoxName,
+// 		ReaderName:           req.ReaderName,
 // 		MinTimeSec:        req.MinTimeSec,
 // 		MaxTimeSec:        req.MaxTimeSec,
 // 		MinLapTimeSec:     req.MinLapTimeSec,
 // 	}, nil
 // }
 
-func RandomTimingPoint(name string, typ TPType, dst int, boxName string, min, max, lap int64) *TimingPoint {
-	return &TimingPoint{
+func RandomSplit(name string, typ SplitType, dst int, timeReaderID uuid.UUID, min, max, lap int32) *Split {
+	return &Split{
 		ID:                uuid.New(),
 		RaceID:            uuid.New(),
 		EventID:           uuid.New(),
 		Name:              name,
 		Type:              typ,
 		DistanceFromStart: dst,
-		BoxName:           boxName,
+		TimeReaderID:      timeReaderID,
 		MinTimeSec:        min,
 		MaxTimeSec:        max,
 		MinLapTimeSec:     lap,

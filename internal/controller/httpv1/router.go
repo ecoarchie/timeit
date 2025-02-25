@@ -21,5 +21,6 @@ func NewRaceRouter(handler *chi.Mux, l logger.Interface, raceService service.Rac
 	handler.Mount("/races", newRaceRoutes(l, raceService))
 }
 
-func NewParticipantResultsRouter(handler *chi.Mux, l logger.Interface, manager service.ParticipantResultsManager) {
+func NewAthleteResultsRouter(handler *chi.Mux, l logger.Interface, manager service.AthleteResultsManager) {
+	handler.Mount("/races/{race_id}/athletes", newAthletesResultsRoutes(l, manager))
 }

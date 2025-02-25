@@ -49,7 +49,7 @@ func NewCategory(raceID uuid.UUID, eventID uuid.UUID, req CategoryFormData) (*Ca
 		return nil, fmt.Errorf("empty eventID")
 	}
 	if req.Name == "" {
-		return nil, fmt.Errorf("empty timing point name")
+		return nil, fmt.Errorf("empty split name")
 	}
 	if req.FromAge < 0 {
 		return nil, fmt.Errorf("from age must be greater or equal to 0")

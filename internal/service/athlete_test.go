@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var participantRepoMock testdata.ParticipantRepoMock
+var athleteRepoMock testdata.AthleteRepoMock
 
-func TestCreateParticipant(t *testing.T) {
-	service := ParticipantService{
+func TestCreateAthlete(t *testing.T) {
+	service := AthleteService{
 		l:    nil,
-		repo: participantRepoMock,
+		repo: athleteRepoMock,
 	}
 	raceID := uuid.New()
 	eventID := uuid.New()
@@ -26,7 +26,7 @@ func TestCreateParticipant(t *testing.T) {
 	}
 	bib := 100
 	chip := 1
-	req := entity.ParticipantCreateRequest{
+	req := entity.AthleteCreateRequest{
 		RaceID:      raceID,
 		EventID:     eventID,
 		WaveID:      waveID,
@@ -41,10 +41,10 @@ func TestCreateParticipant(t *testing.T) {
 		Comments:    "some comments",
 	}
 
-	got, err := service.CreateParticipant(req)
+	got, err := service.CreateAthlete(req)
 	if assert.NoError(t, err) {
 		zeroDOB, _ := time.Parse(time.DateOnly, "1900-01-01")
-		want := &entity.Participant{
+		want := &entity.Athlete{
 			ID:          got.ID,
 			RaceID:      raceID,
 			EventID:     eventID,

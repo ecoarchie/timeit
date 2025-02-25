@@ -40,19 +40,19 @@ func Run(cfg *config.Config) {
 	raceCache := entity.NewRaceCache()
 	// Services
 	logger.Info("Creating services")
-	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(db))
+	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(db, pool))
 
-	participantRepo := repo.NewParticipantPGRepo()
-	participantService := service.NewParticipantService(logger, participantRepo)
-	resultsService := service.NewResultsService(participantRepo)
+	athleteRepo := repo.NewAthletePGRepo()
+	athleteService := service.NewAthleteService(logger, athleteRepo)
+	resultsService := service.NewResultsService(athleteRepo)
 
-	pRes := service.NewParticipantResultsService(participantService, resultsService)
+	pRes := service.NewAthleteResultsService(athleteService, resultsService)
 
 	// Routers
 	logger.Info("Creating routers")
 	router := chi.NewRouter()
 	httpv1.NewRaceRouter(router, logger, raceService)
-	httpv1.NewParticipantResultsRouter(router, logger, pRes)
+	httpv1.NewAthleteResultsRouter(router, logger, pRes)
 	httpServer := httpserver.New(router, httpserver.Port(cfg.HTTP.Port))
 
 	logger.Info("Starting server at", cfg.HTTP.Port)
