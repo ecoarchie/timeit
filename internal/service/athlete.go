@@ -50,8 +50,13 @@ func (ps AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteCr
 		return nil, err
 	}
 
+	// TODO check if category with this ID is exists. Complete rewrite here
 	if !req.CategoryID.Valid {
-		ps.assignCategory(p)
+		err := ps.assignCategory(p)
+		if err != nil {
+			fmt.Println("error assigning category", err)
+		}
+
 	}
 
 	err = ps.repo.SaveAthlete(ctx, p)
@@ -59,7 +64,6 @@ func (ps AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteCr
 		return nil, err
 	}
 
-	// TODO create and store entity EventAthlete. DO it in repo layer in transaction
 	return p, nil
 }
 

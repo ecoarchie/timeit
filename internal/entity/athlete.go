@@ -63,13 +63,13 @@ type (
 
 func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 	if req.RaceID == uuid.Nil {
-		return nil, fmt.Errorf("athlete must have race assigned")
+		return nil, fmt.Errorf("athlete race must be assigned")
 	}
 	if req.EventID == uuid.Nil {
-		return nil, fmt.Errorf("athlete must have event assigned")
+		return nil, fmt.Errorf("athlete event must be assigned")
 	}
 	if req.WaveID == uuid.Nil {
-		return nil, fmt.Errorf("athlete must have wave assigned")
+		return nil, fmt.Errorf("athlete wave be assigned")
 	}
 	if req.Bib <= 0 {
 		return nil, fmt.Errorf("athlete bib must be greater than 0")
@@ -103,8 +103,8 @@ func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 		fmt.Println(req.DateOfBirth)
 		req.DateOfBirth = zbd
 	}
-	if req.DateOfBirth.Before(zbd) {
-		return nil, fmt.Errorf("athlete's birth year is less than 1900")
+	if req.DateOfBirth.Before(zbd) || req.DateOfBirth.After(time.Now()) {
+		return nil, fmt.Errorf("athlete's birth date is incorrect")
 	}
 
 	id := uuid.New()

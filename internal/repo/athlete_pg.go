@@ -118,24 +118,6 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 	return tx.Commit(ctx)
 }
 
-// func athelteFromDBtoEntity(a database.Athlete, cb database.ChipBib) *entity.Athlete {
-// 	return &entity.Athlete{
-// 		ID:          a.ID,
-// 		RaceID:      a.RaceID,
-// 		EventID:     a.EventID,
-// 		WaveID:      uuid.UUID{},
-// 		Bib:         0,
-// 		Chip:        0,
-// 		FirstName:   "",
-// 		LastName:    "",
-// 		Gender:      "",
-// 		DateOfBirth: time.Time{},
-// 		CategoryID:  uuid.NullUUID{},
-// 		Phone:       "",
-// 		Comments:    "",
-// 	}
-// }
-
 func (ar *AthleteRepoPG) GetCategoryFor(p *entity.Athlete) (uuid.NullUUID, error) {
 	return uuid.NullUUID{}, nil
 }
@@ -150,7 +132,6 @@ func (ar *AthleteRepoPG) GetAthleteByID(ctx context.Context, athleteID uuid.UUID
 		return nil, err
 	}
 
-	// TODO query full data for athlete from db
 	athlete := &entity.Athlete{
 		ID:          a.ID,
 		RaceID:      a.RaceID,

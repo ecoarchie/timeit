@@ -44,11 +44,11 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 }
 
 func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
-	raceID := chi.URLParam(r, "race_id")
-	rUUID, _ := uuid.Parse(raceID)
+	// raceID := chi.URLParam(r, "race_id")
+	// rUUID, _ := uuid.Parse(raceID)
 	var req entity.AthleteCreateRequest
 	json.NewDecoder(r.Body).Decode(&req)
-	req.RaceID = rUUID
+	// req.RaceID = rUUID
 	a, err := p.service.CreateAthlete(r.Context(), req)
 	if err != nil {
 		p.l.Error("error creating athlete", err)
