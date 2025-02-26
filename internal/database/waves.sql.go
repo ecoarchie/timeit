@@ -14,19 +14,19 @@ import (
 
 const addOrUpdateWave = `-- name: AddOrUpdateWave :one
 INSERT INTO waves
-(id, race_id, event_id, "name", start_time, is_launched)
+(id, race_id, event_id, wave_name, start_time, is_launched)
 VALUES($1, $2, $3, $4, $5, $6)
 ON CONFLICT (race_id, event_id, id)
 DO UPDATE
-SET "name"=EXCLUDED."name", start_time=EXCLUDED.start_time, is_launched=EXCLUDED.is_launched
-RETURNING id, race_id, event_id, name, start_time, is_launched
+SET wave_name=EXCLUDED.wave_name, start_time=EXCLUDED.start_time, is_launched=EXCLUDED.is_launched
+RETURNING id, race_id, event_id, wave_name, start_time, is_launched
 `
 
 type AddOrUpdateWaveParams struct {
 	ID         uuid.UUID
 	RaceID     uuid.UUID
 	EventID    uuid.UUID
-	Name       string
+	WaveName   string
 	StartTime  pgtype.Timestamptz
 	IsLaunched bool
 }
@@ -36,7 +36,7 @@ func (q *Queries) AddOrUpdateWave(ctx context.Context, arg AddOrUpdateWaveParams
 		arg.ID,
 		arg.RaceID,
 		arg.EventID,
-		arg.Name,
+		arg.WaveName,
 		arg.StartTime,
 		arg.IsLaunched,
 	)
@@ -45,7 +45,7 @@ func (q *Queries) AddOrUpdateWave(ctx context.Context, arg AddOrUpdateWaveParams
 		&i.ID,
 		&i.RaceID,
 		&i.EventID,
-		&i.Name,
+		&i.WaveName,
 		&i.StartTime,
 		&i.IsLaunched,
 	)
@@ -63,7 +63,7 @@ func (q *Queries) DeleteWaveByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const getAllWavesForEvent = `-- name: GetAllWavesForEvent :many
-SELECT id, race_id, event_id, "name", start_time, is_launched
+SELECT id, race_id, event_id, wave_name, start_time, is_launched
 FROM waves
 WHERE event_id=$1
 ORDER BY start_time ASC
@@ -82,7 +82,7 @@ func (q *Queries) GetAllWavesForEvent(ctx context.Context, eventID uuid.UUID) ([
 			&i.ID,
 			&i.RaceID,
 			&i.EventID,
-			&i.Name,
+			&i.WaveName,
 			&i.StartTime,
 			&i.IsLaunched,
 		); err != nil {

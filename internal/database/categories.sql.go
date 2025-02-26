@@ -13,19 +13,19 @@ import (
 
 const addOrUpdateCategory = `-- name: AddOrUpdateCategory :one
 INSERT INTO categories
-(id, race_id, event_id, "name", gender, from_age, from_race_date, to_age, to_race_date)
+(id, race_id, event_id, category_name, gender, from_age, from_race_date, to_age, to_race_date)
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id)
 DO UPDATE
-SET "name"=EXCLUDED."name", gender=EXCLUDED.gender, from_age=EXCLUDED.from_age, from_race_date=EXCLUDED.from_race_date, to_age=EXCLUDED.to_age, to_race_date=EXCLUDED.to_race_date
-RETURNING id, race_id, event_id, name, gender, from_age, from_race_date, to_age, to_race_date
+SET category_name=EXCLUDED. category_name, gender=EXCLUDED.gender, from_age=EXCLUDED.from_age, from_race_date=EXCLUDED.from_race_date, to_age=EXCLUDED.to_age, to_race_date=EXCLUDED.to_race_date
+RETURNING id, race_id, event_id, category_name, gender, from_age, from_race_date, to_age, to_race_date
 `
 
 type AddOrUpdateCategoryParams struct {
 	ID           uuid.UUID
 	RaceID       uuid.UUID
 	EventID      uuid.UUID
-	Name         string
+	CategoryName string
 	Gender       CategoryGender
 	FromAge      int32
 	FromRaceDate bool
@@ -38,7 +38,7 @@ func (q *Queries) AddOrUpdateCategory(ctx context.Context, arg AddOrUpdateCatego
 		arg.ID,
 		arg.RaceID,
 		arg.EventID,
-		arg.Name,
+		arg.CategoryName,
 		arg.Gender,
 		arg.FromAge,
 		arg.FromRaceDate,
@@ -50,7 +50,7 @@ func (q *Queries) AddOrUpdateCategory(ctx context.Context, arg AddOrUpdateCatego
 		&i.ID,
 		&i.RaceID,
 		&i.EventID,
-		&i.Name,
+		&i.CategoryName,
 		&i.Gender,
 		&i.FromAge,
 		&i.FromRaceDate,
@@ -71,7 +71,7 @@ func (q *Queries) DeleteCategoryByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const getCategoriesForEvent = `-- name: GetCategoriesForEvent :many
-SELECT (id, race_id, event_id, "name", gender, from_age, from_race_date, to_age, to_race_date)
+SELECT (id, race_id, event_id, category_name, gender, from_age, from_race_date, to_age, to_race_date)
 FROM categories
 WHERE event_id=$1
 ORDER BY from_age ASC

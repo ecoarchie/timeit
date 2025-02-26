@@ -11,7 +11,6 @@ import (
 	"github.com/ecoarchie/timeit/config"
 	"github.com/ecoarchie/timeit/internal/controller/httpv1"
 	"github.com/ecoarchie/timeit/internal/database"
-	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/repo"
 	"github.com/ecoarchie/timeit/internal/service"
 	"github.com/ecoarchie/timeit/pkg/httpserver"
@@ -37,12 +36,12 @@ func Run(cfg *config.Config) {
 
 	// Race Cache
 
-	raceCache := entity.NewRaceCache()
+	raceCache := service.NewRaceCache()
 	// Services
 	logger.Info("Creating services")
 	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(db, pool))
 
-	athleteRepo := repo.NewAthletePGRepo()
+	athleteRepo := repo.NewAthleteRepoPG(db, pool)
 	athleteService := service.NewAthleteService(logger, athleteRepo)
 	resultsService := service.NewResultsService(athleteRepo)
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -41,7 +42,7 @@ func TestCreateAthlete(t *testing.T) {
 		Comments:    "some comments",
 	}
 
-	got, err := service.CreateAthlete(req)
+	got, err := service.CreateAthlete(context.Background(), req)
 	if assert.NoError(t, err) {
 		zeroDOB, _ := time.Parse(time.DateOnly, "1900-01-01")
 		want := &entity.Athlete{

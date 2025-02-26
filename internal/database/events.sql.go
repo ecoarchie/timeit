@@ -14,17 +14,17 @@ import (
 
 const addOrUpdateEvent = `-- name: AddOrUpdateEvent :one
 INSERT INTO events
-(id, race_id, "name", distance_in_meters, event_date)
+(id, race_id, event_name, distance_in_meters, event_date)
 VALUES($1, $2, $3, $4, $5)
 ON CONFLICT (race_id, id) DO UPDATE
-SET id=excluded.id, "name"=excluded."name", distance_in_meters=excluded.distance_in_meters, event_date=excluded.event_date
-RETURNING id, race_id, name, distance_in_meters, event_date
+SET id=excluded.id, event_name=excluded.event_name, distance_in_meters=excluded.distance_in_meters, event_date=excluded.event_date
+RETURNING id, race_id, event_name, distance_in_meters, event_date
 `
 
 type AddOrUpdateEventParams struct {
 	ID               uuid.UUID
 	RaceID           uuid.UUID
-	Name             string
+	EventName        string
 	DistanceInMeters int32
 	EventDate        pgtype.Timestamptz
 }
@@ -33,7 +33,7 @@ func (q *Queries) AddOrUpdateEvent(ctx context.Context, arg AddOrUpdateEventPara
 	row := q.db.QueryRow(ctx, addOrUpdateEvent,
 		arg.ID,
 		arg.RaceID,
-		arg.Name,
+		arg.EventName,
 		arg.DistanceInMeters,
 		arg.EventDate,
 	)
@@ -41,7 +41,7 @@ func (q *Queries) AddOrUpdateEvent(ctx context.Context, arg AddOrUpdateEventPara
 	err := row.Scan(
 		&i.ID,
 		&i.RaceID,
-		&i.Name,
+		&i.EventName,
 		&i.DistanceInMeters,
 		&i.EventDate,
 	)
@@ -59,7 +59,7 @@ func (q *Queries) DeleteEvent(ctx context.Context, id uuid.UUID) error {
 }
 
 const getAllEventsForRace = `-- name: GetAllEventsForRace :many
-SELECT id, race_id, "name", distance_in_meters, event_date
+SELECT id, race_id, event_name, distance_in_meters, event_date
 FROM events
 WHERE race_id=$1
 ORDER BY event_date ASC
@@ -77,7 +77,7 @@ func (q *Queries) GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]
 		if err := rows.Scan(
 			&i.ID,
 			&i.RaceID,
-			&i.Name,
+			&i.EventName,
 			&i.DistanceInMeters,
 			&i.EventDate,
 		); err != nil {
@@ -92,7 +92,7 @@ func (q *Queries) GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]
 }
 
 const getEventByID = `-- name: GetEventByID :one
-SELECT id, race_id, "name", distance_in_meters, event_date
+SELECT id, race_id, event_name, distance_in_meters, event_date
 FROM events
 WHERE id=$1
 `
@@ -103,7 +103,7 @@ func (q *Queries) GetEventByID(ctx context.Context, id uuid.UUID) (Event, error)
 	err := row.Scan(
 		&i.ID,
 		&i.RaceID,
-		&i.Name,
+		&i.EventName,
 		&i.DistanceInMeters,
 		&i.EventDate,
 	)

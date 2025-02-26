@@ -1,6 +1,7 @@
 package testdata
 
 import (
+	"context"
 	"time"
 
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -21,7 +22,7 @@ func (prm AthleteRepoMock) GetAthleteWithChip(chip int) (*entity.Athlete, error)
 	return nil, nil
 }
 
-func (prm AthleteRepoMock) GetAthleteByID(raceID, athleteID uuid.UUID) (*entity.Athlete, error) {
+func (prm AthleteRepoMock) GetAthleteByID(ctx context.Context, raceID, athleteID uuid.UUID) (*entity.Athlete, error) {
 	return nil, nil
 }
 

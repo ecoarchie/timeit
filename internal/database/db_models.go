@@ -100,16 +100,16 @@ func (ns NullTpType) Value() (driver.Value, error) {
 }
 
 type Athlete struct {
-	ID          uuid.UUID
-	RaceID      uuid.UUID
-	FirstName   pgtype.Text
-	LastName    pgtype.Text
-	Gender      CategoryGender
-	DateOfBirth pgtype.Date
-	Phone       pgtype.Text
-	Comments    pgtype.Text
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID              uuid.UUID
+	RaceID          uuid.UUID
+	FirstName       pgtype.Text
+	LastName        pgtype.Text
+	Gender          CategoryGender
+	DateOfBirth     pgtype.Date
+	Phone           pgtype.Text
+	AthleteComments pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
 }
 
 type AthleteSplit struct {
@@ -126,7 +126,7 @@ type Category struct {
 	ID           uuid.UUID
 	RaceID       uuid.UUID
 	EventID      uuid.UUID
-	Name         string
+	CategoryName string
 	Gender       CategoryGender
 	FromAge      int32
 	FromRaceDate bool
@@ -144,7 +144,7 @@ type ChipBib struct {
 type Event struct {
 	ID               uuid.UUID
 	RaceID           uuid.UUID
-	Name             string
+	EventName        string
 	DistanceInMeters int32
 	EventDate        pgtype.Timestamptz
 }
@@ -154,13 +154,13 @@ type EventAthlete struct {
 	EventID    uuid.UUID
 	AthleteID  uuid.UUID
 	WaveID     uuid.UUID
-	CategoryID pgtype.UUID
+	CategoryID uuid.NullUUID
 	Bib        pgtype.Int4
 }
 
 type Race struct {
 	ID       uuid.UUID
-	Name     string
+	RaceName string
 	Timezone string
 }
 
@@ -177,8 +177,8 @@ type Split struct {
 	ID                uuid.UUID
 	RaceID            uuid.UUID
 	EventID           uuid.UUID
-	Name              string
-	Type              TpType
+	SplitName         string
+	SplitType         TpType
 	DistanceFromStart int32
 	TimeReaderID      uuid.UUID
 	MinTimeSec        pgtype.Int4
@@ -196,7 +196,7 @@ type Wave struct {
 	ID         uuid.UUID
 	RaceID     uuid.UUID
 	EventID    uuid.UUID
-	Name       string
+	WaveName   string
 	StartTime  pgtype.Timestamptz
 	IsLaunched bool
 }

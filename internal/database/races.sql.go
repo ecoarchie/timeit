@@ -12,22 +12,22 @@ import (
 )
 
 const addRace = `-- name: AddRace :one
-INSERT INTO races (id, name, timezone) VALUES ($1, $2, $3)
+INSERT INTO races (id, race_name, timezone) VALUES ($1, $2, $3)
 ON CONFLICT (id) DO UPDATE
-SET name=EXCLUDED.name, timezone=EXCLUDED.timezone
-RETURNING id, name, timezone
+SET race_name=EXCLUDED.race_name, timezone=EXCLUDED.timezone
+RETURNING id, race_name, timezone
 `
 
 type AddRaceParams struct {
 	ID       uuid.UUID
-	Name     string
+	RaceName string
 	Timezone string
 }
 
 func (q *Queries) AddRace(ctx context.Context, arg AddRaceParams) (Race, error) {
-	row := q.db.QueryRow(ctx, addRace, arg.ID, arg.Name, arg.Timezone)
+	row := q.db.QueryRow(ctx, addRace, arg.ID, arg.RaceName, arg.Timezone)
 	var i Race
-	err := row.Scan(&i.ID, &i.Name, &i.Timezone)
+	err := row.Scan(&i.ID, &i.RaceName, &i.Timezone)
 	return i, err
 }
 

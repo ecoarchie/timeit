@@ -1,8 +1,8 @@
 package service
 
 import (
+	"context"
 	"fmt"
-	"time"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/pkg/logger"
@@ -10,18 +10,18 @@ import (
 )
 
 type AthleteManager interface {
-	GetAthleteByID(raceID, athleteID uuid.UUID) *entity.Athlete
-	CreateAthlete(req entity.AthleteCreateRequest) (*entity.Athlete, error)
-	UpdateAthlete(req entity.AthleteUpdateRequest) (*entity.Athlete, error)
-	DeleteAthlete(raceID, id uuid.UUID) error
+	GetAthleteByID(ctx context.Context, athleteID uuid.UUID) *entity.Athlete
+	CreateAthlete(ctx context.Context, req entity.AthleteCreateRequest) (*entity.Athlete, error)
+	UpdateAthlete(ctx context.Context, req entity.AthleteUpdateRequest) (*entity.Athlete, error)
+	DeleteAthlete(ctx context.Context, athleteID uuid.UUID) error
 }
 
 type AthleteRepo interface {
-	SaveAthlete(p *entity.Athlete) error
-	GetCategoryFor(eventID uuid.UUID, gender entity.CategoryGender, dob time.Time) (uuid.NullUUID, error)
+	SaveAthlete(ctx context.Context, p *entity.Athlete) error
+	GetCategoryFor(p *entity.Athlete) (uuid.NullUUID, error)
 	GetAthleteWithChip(chip int) (*entity.Athlete, error)
-	GetAthleteByID(raceID, athleteID uuid.UUID) (*entity.Athlete, error)
-	DeleteAthlete(raceID uuid.UUID, id uuid.UUID) error
+	GetAthleteByID(ctx context.Context, athleteID uuid.UUID) (*entity.Athlete, error)
+	DeleteAthlete(ctx context.Context, a *entity.Athlete) error
 }
 
 type AthleteService struct {
@@ -36,15 +36,15 @@ func NewAthleteService(logger logger.Interface, repo AthleteRepo) *AthleteServic
 	}
 }
 
-func (ps AthleteService) GetAthleteByID(raceID, athleteID uuid.UUID) *entity.Athlete {
-	p, err := ps.repo.GetAthleteByID(raceID, athleteID)
+func (ps AthleteService) GetAthleteByID(ctx context.Context, athleteID uuid.UUID) *entity.Athlete {
+	p, err := ps.repo.GetAthleteByID(ctx, athleteID)
 	if err != nil {
 		return nil
 	}
 	return p
 }
 
-func (ps AthleteService) CreateAthlete(req entity.AthleteCreateRequest) (*entity.Athlete, error) {
+func (ps AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteCreateRequest) (*entity.Athlete, error) {
 	p, err := entity.NewAthlete(req)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (ps AthleteService) CreateAthlete(req entity.AthleteCreateRequest) (*entity
 		ps.assignCategory(p)
 	}
 
-	err = ps.repo.SaveAthlete(p)
+	err = ps.repo.SaveAthlete(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (ps AthleteService) CreateAthlete(req entity.AthleteCreateRequest) (*entity
 }
 
 func (ps AthleteService) assignCategory(p *entity.Athlete) error {
-	catID, err := ps.repo.GetCategoryFor(p.EventID, p.Gender, p.DateOfBirth)
+	catID, err := ps.repo.GetCategoryFor(p)
 	if err != nil {
 		return fmt.Errorf("error assigning category for athlete with bib %d", p.Bib)
 	}
@@ -72,8 +72,8 @@ func (ps AthleteService) assignCategory(p *entity.Athlete) error {
 	return nil
 }
 
-func (ps AthleteService) UpdateAthlete(req entity.AthleteUpdateRequest) (*entity.Athlete, error) {
-	p, err := ps.repo.GetAthleteByID(req.RaceID, req.ID)
+func (ps AthleteService) UpdateAthlete(ctx context.Context, req entity.AthleteUpdateRequest) (*entity.Athlete, error) {
+	p, err := ps.repo.GetAthleteByID(ctx, req.ID)
 	if err != nil {
 		return nil, fmt.Errorf("updateAthlete: athlete with ID %s not found", req.ID)
 	}
@@ -83,29 +83,32 @@ func (ps AthleteService) UpdateAthlete(req entity.AthleteUpdateRequest) (*entity
 	}
 	newP.ID = p.ID
 
-	err = ps.repo.SaveAthlete(newP)
+	err = ps.repo.SaveAthlete(ctx, newP)
 	if err != nil {
 		return nil, err
 	}
 	return newP, nil
 }
 
-func (ps AthleteService) DeleteAthlete(raceID, id uuid.UUID) error {
-	_, err := ps.repo.GetAthleteByID(raceID, id)
+func (ps AthleteService) DeleteAthlete(ctx context.Context, athleteID uuid.UUID) error {
+	a, err := ps.repo.GetAthleteByID(ctx, athleteID)
 	if err != nil {
-		return fmt.Errorf("deleteAthlete: athlete with ID %s not found", id)
+		return err
 	}
-	err = ps.repo.DeleteAthlete(raceID, id)
+	if a == nil {
+		return fmt.Errorf("athlete with ID %s not found", athleteID)
+	}
+	err = ps.repo.DeleteAthlete(ctx, a)
 	if err != nil {
-		return fmt.Errorf("delete athlete: error deleting athlete %s from DB", id)
+		return fmt.Errorf("delete athlete: error deleting athlete %s from DB", athleteID)
 	}
 	return nil
 }
 
-func (ps AthleteService) DeleteAthleteBulk(raceID uuid.UUID, ids []uuid.UUID) []error {
+func (ps AthleteService) DeleteAthleteBulk(ctx context.Context, raceID uuid.UUID, ids []uuid.UUID) []error {
 	var errors []error
 	for _, id := range ids {
-		err := ps.DeleteAthlete(raceID, id)
+		err := ps.DeleteAthlete(ctx, id)
 		if err != nil {
 			errors = append(errors, err)
 		}

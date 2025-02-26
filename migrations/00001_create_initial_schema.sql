@@ -3,7 +3,7 @@
 -- Table: races
 CREATE TABLE races (
   id UUID PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
+  race_name TEXT NOT NULL UNIQUE,
   timezone TEXT NOT NULL
 );
 
@@ -11,10 +11,11 @@ CREATE TABLE races (
 CREATE TABLE events (
   id UUID PRIMARY KEY,
   race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
+  event_name TEXT NOT NULL,
   distance_in_meters INTEGER NOT NULL,
   event_date TIMESTAMPTZ NOT NULL,
-  UNIQUE (race_id, id)
+  UNIQUE (race_id, id),
+  UNIQUE (race_id, event_name)
 );
 
 -- Table: waves
@@ -22,10 +23,11 @@ CREATE TABLE waves (
   id UUID NOT NULL,
   race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  name VARCHAR NOT NULL,
+  wave_name VARCHAR NOT NULL,
   start_time TIMESTAMPTZ NOT NULL,
   is_launched BOOLEAN NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (race_id, event_id, id)
+  PRIMARY KEY (race_id, event_id, id),
+  UNIQUE (event_id, wave_name)
 );
 
 -- Enum: category_gender
@@ -37,15 +39,16 @@ CREATE TABLE categories (
   id UUID NOT NULL,
   race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
+  category_name TEXT NOT NULL,
   gender category_gender NOT NULL,
   from_age INTEGER NOT NULL,
   from_race_date BOOLEAN NOT NULL DEFAULT FALSE,
   to_age INTEGER NOT NULL,
   to_race_date BOOLEAN NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (id),
   CHECK (from_age <= to_age),
-  UNIQUE (id, race_id, event_id)
+  PRIMARY KEY (id),
+  UNIQUE (id, race_id, event_id),
+  UNIQUE (event_id, category_name)
 );
 
 
@@ -82,8 +85,8 @@ CREATE TABLE splits (
   id UUID NOT NULL,
   race_id UUID NOT NULL,
   event_id UUID NOT NULL,
-  name TEXT NOT NULL,
-  type tp_type NOT NULL,
+  split_name TEXT NOT NULL,
+  split_type tp_type NOT NULL,
   distance_from_start INTEGER NOT NULL,
   time_reader_id UUID NOT NULL,
   min_time_sec INTEGER DEFAULT 0,
@@ -91,7 +94,8 @@ CREATE TABLE splits (
   min_lap_time_sec INTEGER DEFAULT 0,
   PRIMARY KEY (race_id, event_id, id),
   FOREIGN KEY (race_id, event_id) REFERENCES events (race_id, id) ON DELETE CASCADE,
-  FOREIGN KEY (time_reader_id) REFERENCES time_readers(id) ON DELETE CASCADE
+  FOREIGN KEY (time_reader_id) REFERENCES time_readers(id) ON DELETE CASCADE,
+  UNIQUE (event_id, split_name)
 );
 
 -- Table: athletes
@@ -103,7 +107,7 @@ CREATE TABLE athletes (
   gender category_gender NOT NULL DEFAULT 'unknown',
   date_of_birth DATE,
   phone TEXT,
-  comments TEXT,
+  athlete_comments TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (race_id) REFERENCES races (id) ON DELETE CASCADE

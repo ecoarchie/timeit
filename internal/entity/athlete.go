@@ -71,6 +71,12 @@ func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 	if req.WaveID == uuid.Nil {
 		return nil, fmt.Errorf("athlete must have wave assigned")
 	}
+	if req.Bib <= 0 {
+		return nil, fmt.Errorf("athlete bib must be greater than 0")
+	}
+	if req.Chip <= 0 {
+		return nil, fmt.Errorf("athlete chip must be greater than 0")
+	}
 	if req.FirstName == "" {
 		req.FirstName = "athlete"
 	}
@@ -93,6 +99,8 @@ func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 		return nil, fmt.Errorf("error parsing zero birth date")
 	}
 	if req.DateOfBirth.IsZero() {
+		fmt.Println("dob is zero")
+		fmt.Println(req.DateOfBirth)
 		req.DateOfBirth = zbd
 	}
 	if req.DateOfBirth.Before(zbd) {

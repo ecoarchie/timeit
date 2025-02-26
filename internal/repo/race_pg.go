@@ -52,7 +52,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 	// Save race
 	addRaceParams := database.AddRaceParams{
 		ID:       r.ID,
-		Name:     r.Name,
+		RaceName: r.Name,
 		Timezone: r.Timezone,
 	}
 	race, err := qtx.q.AddRace(ctx, addRaceParams)
@@ -80,7 +80,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 		eParams := database.AddOrUpdateEventParams{
 			ID:               e.ID,
 			RaceID:           e.RaceID,
-			Name:             e.Name,
+			EventName:        e.Name,
 			DistanceInMeters: int32(e.DistanceInMeters),
 			EventDate: pgtype.Timestamptz{
 				Time:             e.EventDate,
@@ -99,8 +99,8 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				ID:                tp.ID,
 				RaceID:            tp.RaceID,
 				EventID:           tp.EventID,
-				Name:              tp.Name,
-				Type:              database.TpType(tp.Type),
+				SplitName:         tp.Name,
+				SplitType:         database.TpType(tp.Type),
 				DistanceFromStart: int32(tp.DistanceFromStart),
 				TimeReaderID:      tp.TimeReaderID,
 				MinTimeSec: pgtype.Int4{
@@ -125,10 +125,10 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 		// Save waves
 		for _, w := range e.Waves {
 			wParams := database.AddOrUpdateWaveParams{
-				ID:      w.ID,
-				RaceID:  w.RaceID,
-				EventID: w.EventID,
-				Name:    w.Name,
+				ID:       w.ID,
+				RaceID:   w.RaceID,
+				EventID:  w.EventID,
+				WaveName: w.Name,
 				StartTime: pgtype.Timestamptz{
 					Time:             w.StartTime,
 					InfinityModifier: 0,
@@ -148,7 +148,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				ID:           c.ID,
 				RaceID:       c.RaceID,
 				EventID:      c.EventID,
-				Name:         c.Name,
+				CategoryName: c.Name,
 				Gender:       database.CategoryGender(c.Gender),
 				FromAge:      int32(c.FromAge),
 				FromRaceDate: c.FromRaceDate,
