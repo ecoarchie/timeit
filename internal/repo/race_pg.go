@@ -103,16 +103,16 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				SplitType:         database.TpType(tp.Type),
 				DistanceFromStart: int32(tp.DistanceFromStart),
 				TimeReaderID:      tp.TimeReaderID,
-				MinTimeSec: pgtype.Int4{
-					Int32: tp.MinTimeSec,
+				MinTime: pgtype.Int8{
+					Int64: int64(tp.MinTime),
 					Valid: true,
 				},
-				MaxTimeSec: pgtype.Int4{
-					Int32: tp.MaxTimeSec,
+				MaxTime: pgtype.Int8{
+					Int64: int64(tp.MaxTime),
 					Valid: true,
 				},
-				MinLapTimeSec: pgtype.Int4{
-					Int32: tp.MinLapTimeSec,
+				MinLapTime: pgtype.Int8{
+					Int64: int64(tp.MinLapTime),
 					Valid: true,
 				},
 			}

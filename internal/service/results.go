@@ -76,17 +76,17 @@ func (rs ResultsService) ResultForRecord(r entity.ReaderRecord, waveStartTime ti
 		// ps.Results[tp.ID] = &entity.SplitResult{
 		// 	SplitID: tp.ID,
 		// }
-		validMinTime := waveStartTime.Add(time.Duration(tp.MinTimeSec))
+		validMinTime := waveStartTime.Add(tp.MinTime)
 		var validMaxTime time.Time
-		if tp.MaxTimeSec == 0 {
+		if tp.MaxTime == 0 {
 			validMaxTime = waveStartTime.Add(time.Hour * 240)
 		} else {
-			validMaxTime = waveStartTime.Add(time.Duration(tp.MaxTimeSec) * time.Second)
+			validMaxTime = waveStartTime.Add(tp.MaxTime)
 		}
 		if (r.TOD.Equal(validMinTime) || r.TOD.After(validMinTime)) && (r.TOD.Equal(validMaxTime) || r.TOD.Before(validMaxTime)) {
 			if i > 0 {
 				prevLapSplit := tps[i-1]
-				if r.TOD.Sub(pr.Results[prevLapSplit.ID].TOD) < time.Duration(tp.MinLapTimeSec)*time.Second {
+				if r.TOD.Sub(pr.Results[prevLapSplit.ID].TOD) < tp.MinLapTime {
 					return nil
 				}
 			}

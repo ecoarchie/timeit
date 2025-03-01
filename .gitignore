@@ -29,6 +29,7 @@ example.json
 
 # temp files
 tmp
+*.csv
 
 todos.md
 TODO

@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -13,28 +15,28 @@ const (
 )
 
 type Split struct {
-	ID                uuid.UUID `json:"split_id"`
-	RaceID            uuid.UUID `json:"race_id"`
-	EventID           uuid.UUID `json:"event_id"`
-	Name              string    `json:"split_name"`
-	Type              SplitType `json:"split_type"`
-	DistanceFromStart int       `json:"distance_from_start"`
-	TimeReaderID      uuid.UUID `json:"time_reader_id"`
-	MinTimeSec        int32     `json:"min_time_sec"`
-	MaxTimeSec        int32     `json:"max_time_sec"`
-	MinLapTimeSec     int32     `json:"min_lap_time_sec"`
+	ID                uuid.UUID     `json:"split_id"`
+	RaceID            uuid.UUID     `json:"race_id"`
+	EventID           uuid.UUID     `json:"event_id"`
+	Name              string        `json:"split_name"`
+	Type              SplitType     `json:"split_type"`
+	DistanceFromStart int           `json:"distance_from_start"`
+	TimeReaderID      uuid.UUID     `json:"time_reader_id"`
+	MinTime           time.Duration `json:"min_time_sec"`
+	MaxTime           time.Duration `json:"max_time_sec"`
+	MinLapTime        time.Duration `json:"min_lap_time_sec"`
 }
 
 // func (tp *Split) SetValidMinMaxTimes(athleteWaceStart time.Time) {
-// 	if tp.MinTimeSec == 0 {
+// 	if tp.MinTime == 0 {
 // 		tp.ValidMinTime = athleteWaceStart
 // 	} else {
-// 		tp.ValidMinTime = athleteWaceStart.Add(time.Duration(tp.MinTimeSec) * time.Second)
+// 		tp.ValidMinTime = athleteWaceStart.Add(time.Duration(tp.MinTime) * time.Second)
 // 	}
-// 	if tp.MaxTimeSec == 0 {
+// 	if tp.MaxTime == 0 {
 // 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(time.Hour) * 24)
 // 	} else {
-// 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(tp.MaxTimeSec) * time.Second)
+// 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(tp.MaxTime) * time.Second)
 // 	}
 // }
 
@@ -45,9 +47,9 @@ type NewSplitrequest struct {
 	Type              SplitType `json:"type"`
 	DistanceFromStart int       `json:"distance_from_start"`
 	ReaderName        string    `json:"reader_name"`
-	MinTimeSec        int64     `json:"min_time_sec"`
-	MaxTimeSec        int64     `json:"max_time_sec"`
-	MinLapTimeSec     int64     `json:"min_lap_time_sec"`
+	MinTime           int64     `json:"min_time_sec"`
+	MaxTime           int64     `json:"max_time_sec"`
+	MinLapTime        int64     `json:"min_lap_time_sec"`
 }
 
 func IsValidSplitType(tp SplitType) bool {
@@ -75,7 +77,7 @@ func IsValidSplitType(tp SplitType) bool {
 // 	if req.ReaderName == "" {
 // 		return nil, fmt.Errorf("empty box name")
 // 	}
-// 	if req.MinTimeSec < 0 || req.MaxTimeSec < 0 || req.MinLapTimeSec < 0 {
+// 	if req.MinTime < 0 || req.MaxTime < 0 || req.MinLapTime < 0 {
 // 		return nil, fmt.Errorf("min, max and lap times must be equal or greater than 0")
 // 	}
 
@@ -88,13 +90,13 @@ func IsValidSplitType(tp SplitType) bool {
 // 		Type:              req.Type,
 // 		DistanceFromStart: req.DistanceFromStart,
 // 		ReaderName:           req.ReaderName,
-// 		MinTimeSec:        req.MinTimeSec,
-// 		MaxTimeSec:        req.MaxTimeSec,
-// 		MinLapTimeSec:     req.MinLapTimeSec,
+// 		MinTime:        req.MinTime,
+// 		MaxTime:        req.MaxTime,
+// 		MinLapTime:     req.MinLapTime,
 // 	}, nil
 // }
 
-func RandomSplit(name string, typ SplitType, dst int, timeReaderID uuid.UUID, min, max, lap int32) *Split {
+func RandomSplit(name string, typ SplitType, dst int, timeReaderID uuid.UUID, min, max, lap time.Duration) *Split {
 	return &Split{
 		ID:                uuid.New(),
 		RaceID:            uuid.New(),
@@ -103,8 +105,8 @@ func RandomSplit(name string, typ SplitType, dst int, timeReaderID uuid.UUID, mi
 		Type:              typ,
 		DistanceFromStart: dst,
 		TimeReaderID:      timeReaderID,
-		MinTimeSec:        min,
-		MaxTimeSec:        max,
-		MinLapTimeSec:     lap,
+		MinTime:           min,
+		MaxTime:           max,
+		MinLapTime:        lap,
 	}
 }

@@ -243,7 +243,7 @@ func validateSplit(raceID, eventID uuid.UUID, locs []*entity.TimeReader, tp *ent
 	}
 
 	// check time restrictions
-	if tp.MinTimeSec < 0 || tp.MaxTimeSec < 0 || tp.MinLapTimeSec < 0 {
+	if tp.MinTime < 0 || tp.MaxTime < 0 || tp.MinLapTime < 0 {
 		return fmt.Errorf("min, max and lap times must be equal or greater than 0")
 	}
 	return nil

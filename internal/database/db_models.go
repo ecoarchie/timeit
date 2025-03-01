@@ -181,9 +181,9 @@ type Split struct {
 	SplitType         TpType
 	DistanceFromStart int32
 	TimeReaderID      uuid.UUID
-	MinTimeSec        pgtype.Int4
-	MaxTimeSec        pgtype.Int4
-	MinLapTimeSec     pgtype.Int4
+	MinTime           pgtype.Int8
+	MaxTime           pgtype.Int8
+	MinLapTime        pgtype.Int8
 }
 
 type TimeReader struct {
