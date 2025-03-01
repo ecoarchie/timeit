@@ -7,3 +7,11 @@ RETURNING *;
 -- name: DeleteChipBib :exec
 DELETE FROM chip_bib
 WHERE race_id=$1 AND chip=$2 and bib=$3;
+
+-- name: DeleteChipBibWithRaceID :exec
+DELETE FROM chip_bib
+WHERE race_id=$1;
+
+-- name: DeleteChipBibWithEventID :exec
+DELETE FROM chip_bib
+WHERE race_id=$1 and event_id=$2;

@@ -20,3 +20,13 @@ RETURNING *;
 -- name: DeleteAthleteByID :exec
 DELETE FROM athletes
 WHERE id=$1;
+
+-- name: DeleteAthletesWithRaceID :exec
+DELETE FROM athletes
+WHERE race_id=$1;
+
+-- name: DeleteAthletesWithEventID :exec
+DELETE from athletes a
+WHERE a.id IN (
+  SELECT ea.athlete_id 
+  FROM event_athlete ea WHERE ea.event_id = $1);

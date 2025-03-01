@@ -44,7 +44,6 @@ type AthleteUpdateRequest struct {
 }
 
 func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
-	fmt.Println("Req", req)
 	if req.RaceID == uuid.Nil {
 		return nil, fmt.Errorf("athlete race must be assigned")
 	}

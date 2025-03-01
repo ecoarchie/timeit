@@ -18,8 +18,12 @@ type ParticipantQuery interface {
 	AddChipBib(ctx context.Context, arg database.AddChipBibParams) (database.ChipBib, error)
 	AddEventAthlete(ctx context.Context, arg database.AddEventAthleteParams) (database.EventAthlete, error)
 	DeleteAthleteByID(ctx context.Context, athleteID uuid.UUID) error
+	DeleteAthletesWithRaceID(ctx context.Context, raceID uuid.UUID) error
+	DeleteAthletesWithEventID(ctx context.Context, eventID uuid.UUID) error
 	DeleteChipBib(ctx context.Context, arg database.DeleteChipBibParams) error
-	DeleteEventAthlete(ctx context.Context, arg database.DeleteEventAthleteParams) error
+	DeleteChipBibWithEventID(ctx context.Context, arg database.DeleteChipBibWithEventIDParams) error
+	DeleteChipBibWithRaceID(ctx context.Context, raceID uuid.UUID) error
+	// DeleteEventAthlete(ctx context.Context, arg database.DeleteEventAthleteParams) error
 	GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (database.EventAthlete, error)
 	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
 	WithTx(tx pgx.Tx) *database.Queries
@@ -171,6 +175,52 @@ func (ar *AthleteRepoPG) GetAthleteByID(ctx context.Context, athleteID uuid.UUID
 	return athlete, nil
 }
 
+func (ar *AthleteRepoPG) DeleteAthletesForRace(ctx context.Context, raceID uuid.UUID) error {
+	tx, err := ar.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := ar.WithTx(tx)
+
+	err = qtx.q.DeleteChipBibWithRaceID(ctx, raceID)
+	if err != nil {
+		return fmt.Errorf("error deleting chipbib for race = %s", raceID)
+	}
+
+	err = qtx.q.DeleteAthletesWithRaceID(ctx, raceID)
+	if err != nil {
+		return fmt.Errorf("error deleting athletes for race = %s", raceID)
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (ar *AthleteRepoPG) DeleteAthletesForRaceWithEventID(ctx context.Context, raceID, eventID uuid.UUID) error {
+	tx, err := ar.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := ar.WithTx(tx)
+
+	dParams := database.DeleteChipBibWithEventIDParams{
+		RaceID:  raceID,
+		EventID: eventID,
+	}
+	err = qtx.q.DeleteChipBibWithEventID(ctx, dParams)
+	if err != nil {
+		return fmt.Errorf("error deleting chipbib for eventID = %s", eventID)
+	}
+
+	err = qtx.q.DeleteAthletesWithEventID(ctx, eventID)
+	if err != nil {
+		return fmt.Errorf("error deleting athletes for race = %s", raceID)
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (ar *AthleteRepoPG) DeleteAthlete(ctx context.Context, a *entity.Athlete) error {
 	tx, err := ar.pool.Begin(ctx)
 	if err != nil {
@@ -185,23 +235,11 @@ func (ar *AthleteRepoPG) DeleteAthlete(ctx context.Context, a *entity.Athlete) e
 	}
 	err = qtx.q.DeleteChipBib(ctx, cbParams)
 	if err != nil {
-		fmt.Println("error here 2")
 		return err
 	}
 
-	eaParams := database.DeleteEventAthleteParams{
-		RaceID:    a.RaceID,
-		AthleteID: a.ID,
-	}
-	err = qtx.q.DeleteEventAthlete(ctx, eaParams)
-	if err != nil {
-		fmt.Println("error here 3")
-		return err
-	}
 	err = qtx.q.DeleteAthleteByID(ctx, a.ID)
 	if err != nil {
-		fmt.Println("error here")
-		fmt.Println(a)
 		return err
 	}
 	return tx.Commit(ctx)

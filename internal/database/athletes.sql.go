@@ -70,6 +70,28 @@ func (q *Queries) DeleteAthleteByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteAthletesWithEventID = `-- name: DeleteAthletesWithEventID :exec
+DELETE from athletes a
+WHERE a.id IN (
+  SELECT ea.athlete_id 
+  FROM event_athlete ea WHERE ea.event_id = $1)
+`
+
+func (q *Queries) DeleteAthletesWithEventID(ctx context.Context, eventID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAthletesWithEventID, eventID)
+	return err
+}
+
+const deleteAthletesWithRaceID = `-- name: DeleteAthletesWithRaceID :exec
+DELETE FROM athletes
+WHERE race_id=$1
+`
+
+func (q *Queries) DeleteAthletesWithRaceID(ctx context.Context, raceID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAthletesWithRaceID, raceID)
+	return err
+}
+
 const getAthleteByID = `-- name: GetAthleteByID :one
 SELECT a.id, a.race_id, a.first_name, a.last_name, a.gender, a.date_of_birth, a.phone, a.athlete_comments, ea.event_id, ea.wave_id, ea.category_id,
 cb.bib, cb.chip

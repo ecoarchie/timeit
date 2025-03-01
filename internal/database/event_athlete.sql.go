@@ -49,21 +49,6 @@ func (q *Queries) AddEventAthlete(ctx context.Context, arg AddEventAthleteParams
 	return i, err
 }
 
-const deleteEventAthlete = `-- name: DeleteEventAthlete :exec
-DELETE FROM event_athlete
-WHERE race_id = $1 AND athlete_id = $2
-`
-
-type DeleteEventAthleteParams struct {
-	RaceID    uuid.UUID
-	AthleteID uuid.UUID
-}
-
-func (q *Queries) DeleteEventAthlete(ctx context.Context, arg DeleteEventAthleteParams) error {
-	_, err := q.db.Exec(ctx, deleteEventAthlete, arg.RaceID, arg.AthleteID)
-	return err
-}
-
 const getEventAthlete = `-- name: GetEventAthlete :one
 SELECT race_id, event_id, athlete_id, wave_id, category_id, bib
 FROM event_athlete

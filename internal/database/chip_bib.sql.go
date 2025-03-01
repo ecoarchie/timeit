@@ -57,3 +57,28 @@ func (q *Queries) DeleteChipBib(ctx context.Context, arg DeleteChipBibParams) er
 	_, err := q.db.Exec(ctx, deleteChipBib, arg.RaceID, arg.Chip, arg.Bib)
 	return err
 }
+
+const deleteChipBibWithEventID = `-- name: DeleteChipBibWithEventID :exec
+DELETE FROM chip_bib
+WHERE race_id=$1 and event_id=$2
+`
+
+type DeleteChipBibWithEventIDParams struct {
+	RaceID  uuid.UUID
+	EventID uuid.UUID
+}
+
+func (q *Queries) DeleteChipBibWithEventID(ctx context.Context, arg DeleteChipBibWithEventIDParams) error {
+	_, err := q.db.Exec(ctx, deleteChipBibWithEventID, arg.RaceID, arg.EventID)
+	return err
+}
+
+const deleteChipBibWithRaceID = `-- name: DeleteChipBibWithRaceID :exec
+DELETE FROM chip_bib
+WHERE race_id=$1
+`
+
+func (q *Queries) DeleteChipBibWithRaceID(ctx context.Context, raceID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteChipBibWithRaceID, raceID)
+	return err
+}

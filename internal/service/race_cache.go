@@ -91,6 +91,30 @@ func (rc *RaceCache) GetEvent(id uuid.UUID) (*entity.Event, bool) {
 	return e, found
 }
 
+func (rc *RaceCache) GetEventNameIDforRace(raceID uuid.UUID) map[string]EventID {
+	res := make(map[string]EventID)
+	for _, e := range rc.Events {
+		rc.mu.RLock()
+		if e.RaceID == raceID {
+			res[e.Name] = e.ID
+		}
+		rc.mu.RUnlock()
+	}
+	return res
+}
+
+func (rc *RaceCache) GetWavesForRace(raceID uuid.UUID) []*entity.Wave {
+	var res []*entity.Wave
+	for _, w := range rc.Waves {
+		rc.mu.RLock()
+		if w.RaceID == raceID {
+			res = append(res, w)
+		}
+		rc.mu.RUnlock()
+	}
+	return res
+}
+
 func (rc *RaceCache) RemoveEvent(id uuid.UUID) {
 	rc.mu.Lock()
 	delete(rc.Events, id)

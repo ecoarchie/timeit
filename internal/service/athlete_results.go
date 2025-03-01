@@ -9,12 +9,13 @@ type AthleteResultsManager interface {
 type AthleteResultsService struct {
 	AthleteManager
 	ResultsManager
+	Cache *RaceCache
 }
 
-func NewAthleteResultsService(p AthleteManager, res ResultsManager) *AthleteResultsService {
+func NewAthleteResultsService(a AthleteManager, res ResultsManager) *AthleteResultsService {
 	return &AthleteResultsService{
-		p,
-		res,
+		AthleteManager: a,
+		ResultsManager: res,
 	}
 }
 

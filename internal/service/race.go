@@ -75,12 +75,10 @@ func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) []error {
 	}
 	rs.raceCache.StoreRaceConfig(rc)
 	rs.l.Info("race cache updated")
-	// fmt.Println("Race config cats are: ", rc.Events[0].Categories[0], rc.Events[0].Categories[1])
 	return errors
 }
 
 func (rs RaceService) validate(rc *entity.RaceConfig) []error {
-	fmt.Println(rc)
 	errors := []error{}
 	if err := validateRace(rc.Race); err != nil {
 		errors = append(errors, err)

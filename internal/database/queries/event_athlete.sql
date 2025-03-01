@@ -8,7 +8,3 @@ RETURNING *;
 SELECT race_id, event_id, athlete_id, wave_id, category_id, bib
 FROM event_athlete
 WHERE athlete_id=$1;
-
--- name: DeleteEventAthlete :exec
-DELETE FROM event_athlete
-WHERE race_id = $1 AND athlete_id = $2;

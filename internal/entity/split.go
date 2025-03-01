@@ -61,41 +61,6 @@ func IsValidSplitType(tp SplitType) bool {
 	}
 }
 
-// func NewSplit(raceID uuid.UUID, eventID uuid.UUID, req SplitFormData) (*Split, error) {
-// 	if raceID == uuid.Nil {
-// 		return nil, fmt.Errorf("empty raceID")
-// 	}
-// 	if eventID == uuid.Nil {
-// 		return nil, fmt.Errorf("empty eventID")
-// 	}
-// 	if req.Name == "" {
-// 		return nil, fmt.Errorf("empty split name")
-// 	}
-// 	if req.DistanceFromStart < 0 {
-// 		return nil, fmt.Errorf("distance from start must be equal or greater than 0")
-// 	}
-// 	if req.ReaderName == "" {
-// 		return nil, fmt.Errorf("empty box name")
-// 	}
-// 	if req.MinTime < 0 || req.MaxTime < 0 || req.MinLapTime < 0 {
-// 		return nil, fmt.Errorf("min, max and lap times must be equal or greater than 0")
-// 	}
-
-// 	id := uuid.New()
-// 	return &Split{
-// 		ID:                id,
-// 		RaceID:            raceID,
-// 		EventID:           eventID,
-// 		Name:              req.Name,
-// 		Type:              req.Type,
-// 		DistanceFromStart: req.DistanceFromStart,
-// 		ReaderName:           req.ReaderName,
-// 		MinTime:        req.MinTime,
-// 		MaxTime:        req.MaxTime,
-// 		MinLapTime:     req.MinLapTime,
-// 	}, nil
-// }
-
 func RandomSplit(name string, typ SplitType, dst int, timeReaderID uuid.UUID, min, max, lap time.Duration) *Split {
 	return &Split{
 		ID:                uuid.New(),

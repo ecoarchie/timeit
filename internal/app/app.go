@@ -42,7 +42,7 @@ func Run(cfg *config.Config) {
 	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(db, pool))
 
 	athleteRepo := repo.NewAthleteRepoPG(db, pool)
-	athleteService := service.NewAthleteService(logger, athleteRepo)
+	athleteService := service.NewAthleteService(logger, athleteRepo, raceCache)
 	resultsService := service.NewResultsService(athleteRepo)
 
 	pRes := service.NewAthleteResultsService(athleteService, resultsService)

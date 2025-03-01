@@ -119,7 +119,7 @@ CREATE INDEX idx_athletes_first_last ON athletes (first_name, last_name);
 CREATE TABLE event_athlete (
   race_id UUID NOT NULL,
   event_id UUID NOT NULL,
-  athlete_id UUID NOT NULL REFERENCES athletes(id),
+  athlete_id UUID NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
   wave_id UUID NOT NULL,
   category_id UUID,
   bib INTEGER,
