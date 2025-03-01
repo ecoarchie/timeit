@@ -150,10 +150,18 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				EventID:      c.EventID,
 				CategoryName: c.Name,
 				Gender:       database.CategoryGender(c.Gender),
-				FromAge:      int32(c.FromAge),
-				FromRaceDate: c.FromRaceDate,
-				ToAge:        int32(c.ToAge),
-				ToRaceDate:   c.ToRaceDate,
+				AgeFrom:      int32(c.AgeFrom),
+				DateFrom: pgtype.Timestamptz{
+					Time:             c.DateFrom,
+					InfinityModifier: 0,
+					Valid:            true,
+				},
+				AgeTo: int32(c.AgeTo),
+				DateTo: pgtype.Timestamptz{
+					Time:             c.DateTo,
+					InfinityModifier: 0,
+					Valid:            true,
+				},
 			}
 			_, err := qtx.q.AddOrUpdateCategory(ctx, cParams)
 			if err != nil {

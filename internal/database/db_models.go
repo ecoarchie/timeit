@@ -128,10 +128,10 @@ type Category struct {
 	EventID      uuid.UUID
 	CategoryName string
 	Gender       CategoryGender
-	FromAge      int32
-	FromRaceDate bool
-	ToAge        int32
-	ToRaceDate   bool
+	AgeFrom      int32
+	DateFrom     pgtype.Timestamptz
+	AgeTo        int32
+	DateTo       pgtype.Timestamptz
 }
 
 type ChipBib struct {

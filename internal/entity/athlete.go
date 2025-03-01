@@ -43,25 +43,8 @@ type AthleteUpdateRequest struct {
 	AthleteCreateRequest
 }
 
-type AthleteCSV struct {
-	Event       string `csv:"event"`
-	Wave        string `csv:"wave"`
-	Bib         int    `csv:"bib"`
-	Chip        int    `csv:"tag"`
-	FirstName   string `csv:"name"`
-	LastName    string `csv:"surname"`
-	Gender      string `csv:"gender"`
-	DateOfBirth string `csv:"date of birth"`
-	Phone       string `csv:"phone"`
-	Comments    string `csv:"comments"`
-}
-
-type (
-	InvalidHeader = string
-	ValidHeader   = string
-)
-
 func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
+	fmt.Println("Req", req)
 	if req.RaceID == uuid.Nil {
 		return nil, fmt.Errorf("athlete race must be assigned")
 	}
@@ -99,8 +82,6 @@ func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 		return nil, fmt.Errorf("error parsing zero birth date")
 	}
 	if req.DateOfBirth.IsZero() {
-		fmt.Println("dob is zero")
-		fmt.Println(req.DateOfBirth)
 		req.DateOfBirth = zbd
 	}
 	if req.DateOfBirth.Before(zbd) || req.DateOfBirth.After(time.Now()) {

@@ -1,8 +1,14 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-run:
-	go run cmd/app/main.go
+run: build
+	@./bin/timeit
+
+build: fmt
+	@go build -o bin/timeit ./cmd/app 
+
+fmt:
+	@go fmt ./...
 
 test:
 	go test -v ./...

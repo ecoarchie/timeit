@@ -18,7 +18,7 @@ type AthleteManager interface {
 
 type AthleteRepo interface {
 	SaveAthlete(ctx context.Context, p *entity.Athlete) error
-	GetCategoryFor(p *entity.Athlete) (uuid.NullUUID, error)
+	GetCategoryFor(ctx context.Context, p *entity.Athlete) (uuid.NullUUID, bool, error)
 	GetAthleteWithChip(chip int) (*entity.Athlete, error)
 	GetAthleteByID(ctx context.Context, athleteID uuid.UUID) (*entity.Athlete, error)
 	DeleteAthlete(ctx context.Context, a *entity.Athlete) error
@@ -52,13 +52,13 @@ func (ps AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteCr
 
 	// TODO check if category with this ID is exists. Complete rewrite here
 	if !req.CategoryID.Valid {
-		err := ps.assignCategory(p)
+		err := ps.assignCategory(ctx, p)
 		if err != nil {
 			fmt.Println("error assigning category", err)
 		}
-
 	}
 
+	fmt.Println("athelte", p)
 	err = ps.repo.SaveAthlete(ctx, p)
 	if err != nil {
 		return nil, err
@@ -67,8 +67,8 @@ func (ps AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteCr
 	return p, nil
 }
 
-func (ps AthleteService) assignCategory(p *entity.Athlete) error {
-	catID, err := ps.repo.GetCategoryFor(p)
+func (ps AthleteService) assignCategory(ctx context.Context, p *entity.Athlete) error {
+	catID, _, err := ps.repo.GetCategoryFor(ctx, p)
 	if err != nil {
 		return fmt.Errorf("error assigning category for athlete with bib %d", p.Bib)
 	}

@@ -17,28 +17,26 @@ const (
 )
 
 type Category struct {
-	ID            uuid.UUID      `json:"category_id"`
-	RaceID        uuid.UUID      `json:"race_id"`
-	EventID       uuid.UUID      `json:"event_id"`
-	Name          string         `json:"category_name"`
-	Gender        CategoryGender `json:"category_gender"`
-	FromAge       int            `json:"from_age"`
-	FromRaceDate  bool           `json:"from_race_date"`
-	ToAge         int            `json:"to_age"`
-	ToRaceDate    bool           `json:"to_race_date"`
-	BirthDateFrom time.Time
-	BirthDateTo   time.Time
+	ID       uuid.UUID      `json:"category_id"`
+	RaceID   uuid.UUID      `json:"race_id"`
+	EventID  uuid.UUID      `json:"event_id"`
+	Name     string         `json:"category_name"`
+	Gender   CategoryGender `json:"category_gender"`
+	AgeFrom  int            `json:"age_from"`
+	DateFrom time.Time      `json:"date_from"`
+	AgeTo    int            `json:"age_to"`
+	DateTo   time.Time      `json:"date_to"`
 }
 
 type CategoryFormData struct {
-	RaceID       uuid.UUID      `json:"race_id"`
-	EventID      uuid.UUID      `json:"event_id"`
-	Name         string         `json:"name"`
-	Gender       CategoryGender `json:"gender"`
-	FromAge      int            `json:"from_age"`
-	FromRaceDate bool           `json:"from_race_date"`
-	ToAge        int            `json:"to_age"`
-	ToRaceDate   bool           `json:"to_race_date"`
+	RaceID   uuid.UUID      `json:"race_id"`
+	EventID  uuid.UUID      `json:"event_id"`
+	Name     string         `json:"name"`
+	Gender   CategoryGender `json:"gender"`
+	AgeFrom  int            `json:"age_from"`
+	DateFrom time.Time      `json:"date_from"`
+	AgeTo    int            `json:"age_to"`
+	DateTo   time.Time      `json:"date_to"`
 }
 
 func NewCategory(raceID uuid.UUID, eventID uuid.UUID, req CategoryFormData) (*Category, error) {
@@ -51,34 +49,45 @@ func NewCategory(raceID uuid.UUID, eventID uuid.UUID, req CategoryFormData) (*Ca
 	if req.Name == "" {
 		return nil, fmt.Errorf("empty split name")
 	}
-	if req.FromAge < 0 {
+	if req.AgeFrom < 0 {
 		return nil, fmt.Errorf("from age must be greater or equal to 0")
 	}
-	if req.ToAge < 0 {
+	if req.AgeTo < 0 {
 		return nil, fmt.Errorf("to age must be greater or equal to 0")
 	}
-	if req.FromAge > req.ToAge {
+	if req.AgeFrom > req.AgeTo {
 		return nil, fmt.Errorf("from age must be less than to age")
 	}
 
 	id := uuid.New()
 
 	return &Category{
-		ID:           id,
-		RaceID:       raceID,
-		EventID:      eventID,
-		Name:         req.Name,
-		Gender:       req.Gender,
-		FromAge:      req.FromAge,
-		FromRaceDate: req.FromRaceDate,
-		ToAge:        req.ToAge,
-		ToRaceDate:   req.ToRaceDate,
+		ID:       id,
+		RaceID:   raceID,
+		EventID:  eventID,
+		Name:     req.Name,
+		Gender:   req.Gender,
+		AgeFrom:  req.AgeFrom,
+		DateFrom: req.DateFrom,
+		AgeTo:    req.AgeTo,
+		DateTo:   req.DateTo,
 	}, nil
 }
 
-func (c Category) ValidForGenderAndDateOfBirth(gender CategoryGender, dob time.Time, eventDate time.Time) bool {
+func (c Category) ValidForGenderAndDateOfBirth(gender CategoryGender, dob time.Time) bool {
 	if gender != c.Gender {
 		return false
 	}
-	return (dob.After(c.BirthDateFrom) || dob.Equal(c.BirthDateFrom)) && (dob.Before(c.BirthDateTo) || dob.Equal(c.BirthDateTo))
+
+	bdFrom := c.BirthDateFrom(dob)
+	bdTo := c.BirthDateTo(dob)
+	return (dob.After(bdFrom) || dob.Equal(bdFrom)) && (dob.Before(bdTo) || dob.Equal(bdTo))
+}
+
+func (c Category) BirthDateFrom(dob time.Time) time.Time {
+	return c.DateFrom.AddDate(-c.AgeFrom, 0, 0)
+}
+
+func (c Category) BirthDateTo(dob time.Time) time.Time {
+	return c.DateTo.AddDate(-c.AgeTo, 0, 0)
 }

@@ -21,6 +21,7 @@ type ParticipantQuery interface {
 	DeleteChipBib(ctx context.Context, arg database.DeleteChipBibParams) error
 	DeleteEventAthlete(ctx context.Context, arg database.DeleteEventAthleteParams) error
 	GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (database.EventAthlete, error)
+	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -118,8 +119,28 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 	return tx.Commit(ctx)
 }
 
-func (ar *AthleteRepoPG) GetCategoryFor(p *entity.Athlete) (uuid.NullUUID, error) {
-	return uuid.NullUUID{}, nil
+func (ar *AthleteRepoPG) GetCategoryFor(ctx context.Context, p *entity.Athlete) (uuid.NullUUID, bool, error) {
+	params := database.GetCategoryForAthleteParams{
+		EventID: p.EventID,
+		Gender:  database.CategoryGender(p.Gender),
+		DateTo: pgtype.Timestamptz{
+			Time:             p.DateOfBirth,
+			InfinityModifier: 0,
+			Valid:            true,
+		},
+	}
+
+	c, err := ar.q.GetCategoryForAthlete(ctx, params)
+	if err != nil {
+		if c.ID == uuid.Nil {
+			return uuid.NullUUID{}, false, nil
+		}
+		return uuid.NullUUID{}, false, err
+	}
+	return uuid.NullUUID{
+		UUID:  c.ID,
+		Valid: true,
+	}, true, nil
 }
 
 func (ar *AthleteRepoPG) GetAthleteWithChip(chip int) (*entity.Athlete, error) {

@@ -2,7 +2,6 @@ package entity
 
 import (
 	"fmt"
-	"time"
 )
 
 type RaceConfig struct {
@@ -19,10 +18,9 @@ type EventConfig struct {
 }
 
 type RaceFormData struct {
-	Id       string    `json:"race_id"`
-	Name     string    `json:"name"`
-	RaceDate time.Time `json:"race_date"`
-	Timezone string    `json:"timezone"`
+	Id       string `json:"race_id"`
+	Name     string `json:"race_name"`
+	Timezone string `json:"timezone"`
 }
 
 func (rc RaceConfig) String() string {

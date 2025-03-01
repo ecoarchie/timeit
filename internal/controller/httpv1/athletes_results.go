@@ -2,6 +2,7 @@ package httpv1
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -25,6 +26,8 @@ func newAthletesResultsRoutes(l logger.Interface, service service.AthleteResults
 	r := chi.NewRouter()
 	r.Get("/{athlete_id}", rr.athleteByID)
 	r.Post("/", rr.createSingleAthlete)
+	r.Post("/csvheaders", rr.checkHeadersCSV)
+	r.Post("/csv/{file_token}", rr.createBulkFromCSV)
 	r.Delete("/{athlete_id}", rr.deleteAthleteByID)
 	return r
 }
@@ -44,10 +47,9 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 }
 
 func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
-	// raceID := chi.URLParam(r, "race_id")
-	// rUUID, _ := uuid.Parse(raceID)
 	var req entity.AthleteCreateRequest
 	json.NewDecoder(r.Body).Decode(&req)
+	fmt.Println("req HERE", req)
 	// req.RaceID = rUUID
 	a, err := p.service.CreateAthlete(r.Context(), req)
 	if err != nil {
@@ -73,4 +75,35 @@ func (p athletesResultsRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (p athletesResultsRoutes) checkHeadersCSV(w http.ResponseWriter, r *http.Request) {
+	token, err := service.StoreTmpFile(r)
+	if err != nil {
+		http.Error(w, fmt.Errorf("error saving file: %w", err).Error(), http.StatusBadRequest)
+		return
+	}
+	par := service.NewAthleteCSVParser(token+".csv", ";")
+	userHeaders, matchingHeaders, err := par.CompareHeaders()
+	if err != nil {
+		http.Error(w, "error comparing headers in csv", http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"file_token": token, "user_headers": userHeaders, "matching_headers": matchingHeaders})
+}
+
+func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.Request) {
+	fileToken := chi.URLParam(r, "file_token")
+	var headers struct {
+		Headers []string `json:"headers"`
+	}
+	json.NewDecoder(r.Body).Decode(&headers)
+	par := service.NewAthleteCSVParser(fileToken+".csv", ";")
+	athletes, err := par.ReadCSV(headers.Headers)
+	if err != nil {
+		http.Error(w, fmt.Errorf("error reading csv: %w", err).Error(), http.StatusBadRequest)
+		return
+	}
+	// FIXME
+	fmt.Printf("Athletes: %+v", athletes)
 }

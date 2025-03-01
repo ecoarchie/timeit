@@ -9,16 +9,17 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addOrUpdateCategory = `-- name: AddOrUpdateCategory :one
 INSERT INTO categories
-(id, race_id, event_id, category_name, gender, from_age, from_race_date, to_age, to_race_date)
+(id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to)
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id)
 DO UPDATE
-SET category_name=EXCLUDED. category_name, gender=EXCLUDED.gender, from_age=EXCLUDED.from_age, from_race_date=EXCLUDED.from_race_date, to_age=EXCLUDED.to_age, to_race_date=EXCLUDED.to_race_date
-RETURNING id, race_id, event_id, category_name, gender, from_age, from_race_date, to_age, to_race_date
+SET category_name=EXCLUDED. category_name, gender=EXCLUDED.gender, age_from=EXCLUDED.age_from, date_from=EXCLUDED.date_from, age_to=EXCLUDED.age_to, date_to=EXCLUDED.date_to
+RETURNING id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to
 `
 
 type AddOrUpdateCategoryParams struct {
@@ -27,10 +28,10 @@ type AddOrUpdateCategoryParams struct {
 	EventID      uuid.UUID
 	CategoryName string
 	Gender       CategoryGender
-	FromAge      int32
-	FromRaceDate bool
-	ToAge        int32
-	ToRaceDate   bool
+	AgeFrom      int32
+	DateFrom     pgtype.Timestamptz
+	AgeTo        int32
+	DateTo       pgtype.Timestamptz
 }
 
 func (q *Queries) AddOrUpdateCategory(ctx context.Context, arg AddOrUpdateCategoryParams) (Category, error) {
@@ -40,10 +41,10 @@ func (q *Queries) AddOrUpdateCategory(ctx context.Context, arg AddOrUpdateCatego
 		arg.EventID,
 		arg.CategoryName,
 		arg.Gender,
-		arg.FromAge,
-		arg.FromRaceDate,
-		arg.ToAge,
-		arg.ToRaceDate,
+		arg.AgeFrom,
+		arg.DateFrom,
+		arg.AgeTo,
+		arg.DateTo,
 	)
 	var i Category
 	err := row.Scan(
@@ -52,10 +53,10 @@ func (q *Queries) AddOrUpdateCategory(ctx context.Context, arg AddOrUpdateCatego
 		&i.EventID,
 		&i.CategoryName,
 		&i.Gender,
-		&i.FromAge,
-		&i.FromRaceDate,
-		&i.ToAge,
-		&i.ToRaceDate,
+		&i.AgeFrom,
+		&i.DateFrom,
+		&i.AgeTo,
+		&i.DateTo,
 	)
 	return i, err
 }
@@ -71,10 +72,10 @@ func (q *Queries) DeleteCategoryByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const getCategoriesForEvent = `-- name: GetCategoriesForEvent :many
-SELECT (id, race_id, event_id, category_name, gender, from_age, from_race_date, to_age, to_race_date)
+SELECT (id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to)
 FROM categories
 WHERE event_id=$1
-ORDER BY from_age ASC
+ORDER BY age_from ASC
 `
 
 func (q *Queries) GetCategoriesForEvent(ctx context.Context, eventID uuid.UUID) ([]interface{}, error) {
@@ -95,4 +96,36 @@ func (q *Queries) GetCategoriesForEvent(ctx context.Context, eventID uuid.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCategoryForAthlete = `-- name: GetCategoryForAthlete :one
+SELECT id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to
+FROM categories
+WHERE 
+event_id = $1 
+AND gender = $2 
+AND $3 BETWEEN (date_to - (age_to || ' years')::INTERVAL) AND (date_from - (age_from || ' years')::INTERVAL)
+`
+
+type GetCategoryForAthleteParams struct {
+	EventID uuid.UUID
+	Gender  CategoryGender
+	DateTo  pgtype.Timestamptz
+}
+
+func (q *Queries) GetCategoryForAthlete(ctx context.Context, arg GetCategoryForAthleteParams) (Category, error) {
+	row := q.db.QueryRow(ctx, getCategoryForAthlete, arg.EventID, arg.Gender, arg.DateTo)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.RaceID,
+		&i.EventID,
+		&i.CategoryName,
+		&i.Gender,
+		&i.AgeFrom,
+		&i.DateFrom,
+		&i.AgeTo,
+		&i.DateTo,
+	)
+	return i, err
 }

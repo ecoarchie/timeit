@@ -186,26 +186,14 @@ func validateCategory(raceID, eventID uuid.UUID, eventDate time.Time, c *entity.
 	if !entity.IsValidGender(c.Gender) {
 		return fmt.Errorf("invalid gender")
 	}
-	if c.FromAge < 0 {
+	if c.AgeFrom < 0 {
 		return fmt.Errorf("from age must be greater or equal to 0")
 	}
-	if c.ToAge < 0 {
+	if c.AgeTo < 0 {
 		return fmt.Errorf("to age must be greater or equal to 0")
 	}
-	if c.FromAge > c.ToAge {
+	if c.AgeFrom > c.AgeTo {
 		return fmt.Errorf("upper age limit must be greater than lower age limit")
-	}
-	tz := eventDate.Location()
-	if !c.ToRaceDate {
-		c.BirthDateFrom = time.Date(eventDate.Year()-c.ToAge, time.January, 1, 0, 0, 0, 0, tz)
-	} else {
-		c.BirthDateFrom = time.Date(eventDate.Year()-c.ToAge+1, eventDate.Month(), eventDate.Day()+1, 0, 0, 0, 0, tz)
-	}
-
-	if !c.FromRaceDate {
-		c.BirthDateTo = time.Date(eventDate.Year()-c.FromAge, time.December, 31, 0, 0, 0, 0, tz)
-	} else {
-		c.BirthDateTo = time.Date(eventDate.Year()-c.FromAge, eventDate.Month(), eventDate.Day(), 0, 0, 0, 0, tz)
 	}
 	return nil
 }
