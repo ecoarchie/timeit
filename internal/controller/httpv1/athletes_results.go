@@ -37,8 +37,7 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 	pUUID, _ := uuid.Parse(athleteID)
 	a := p.service.GetAthleteByID(r.Context(), pUUID)
 	if a == nil {
-		p.l.Error("athlete not found")
-		w.WriteHeader(http.StatusNotFound)
+		notFoundResponse(w, r)
 		return
 	}
 	err := writeJSON(w, http.StatusOK, a, nil)
@@ -49,12 +48,17 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 
 func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
 	var req entity.AthleteCreateRequest
-	json.NewDecoder(r.Body).Decode(&req)
-	// req.RaceID = rUUID
+	err := readJSON(w, r, &req)
+	// json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	a, err := p.service.CreateAthlete(r.Context(), req)
 	if err != nil {
-		p.l.Error("error creating athlete", err)
-		serverErrorResponse(w, err)
+		mes := "error creating athlete"
+		p.l.Error(mes, err)
+		errorResponse(w, http.StatusBadRequest, mes)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, a, nil)

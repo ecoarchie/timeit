@@ -37,8 +37,9 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 	var req *entity.RaceFormData
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		rr.l.Error("error parsing new race form", err)
-		serverErrorResponse(w, err)
+		mes := "error parsing new race form"
+		rr.l.Error(mes, err)
+		errorResponse(w, http.StatusBadRequest, mes)
 		return
 	}
 	race, err := rr.rcs.CreateRace(r.Context(), req)
@@ -47,31 +48,25 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 		serverErrorResponse(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(race)
-	// w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, race, nil)
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	var conf *entity.RaceConfig
 	err := json.NewDecoder(r.Body).Decode(&conf)
 	if err != nil {
-		rr.l.Error("error parsing race config form data", err)
-		w.WriteHeader(http.StatusBadRequest)
+		mes := "error parsing race config form data"
+		rr.l.Error(mes, err)
+		errorResponse(w, http.StatusBadRequest, mes)
 		return
 	}
 
 	// TODO add check for db save error for proper error reponse code
 	errs := rr.rcs.Save(r.Context(), conf)
 	if len(errs) != 0 {
-		rr.l.Error("error saving race config", errs)
-		var resp []byte
-		for _, e := range errs {
-			resp = append(resp, []byte(e.Error())...)
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(resp)
+		mes := "error saving race config"
+		rr.l.Error(mes, errs)
+		errorResponse(w, http.StatusBadRequest, mes)
 		return
 	}
 	rr.l.Info("Config for race saved")
