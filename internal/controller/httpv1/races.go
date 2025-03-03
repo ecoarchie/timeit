@@ -38,15 +38,13 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		rr.l.Error("error parsing new race form", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(err.Error())
+		serverErrorResponse(w, err)
 		return
 	}
 	race, err := rr.rcs.CreateRace(r.Context(), req)
 	if err != nil {
 		rr.l.Error("error creating race", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(err.Error())
+		serverErrorResponse(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

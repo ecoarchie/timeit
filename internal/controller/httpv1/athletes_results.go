@@ -2,7 +2,6 @@ package httpv1
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -42,9 +41,10 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(a)
+	err := writeJSON(w, http.StatusOK, a, nil)
+	if err != nil {
+		serverErrorResponse(w, err)
+	}
 }
 
 func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
@@ -54,13 +54,14 @@ func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *htt
 	a, err := p.service.CreateAthlete(r.Context(), req)
 	if err != nil {
 		p.l.Error("error creating athlete", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(err.Error())
+		serverErrorResponse(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(a)
+	err = writeJSON(w, http.StatusOK, a, nil)
+	if err != nil {
+		http.Error(w, "server error", http.StatusBadRequest)
+		return
+	}
 }
 
 func (p athletesResultsRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.Request) {
@@ -69,11 +70,9 @@ func (p athletesResultsRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.
 	err := p.service.DeleteAthlete(r.Context(), aUUID)
 	if err != nil {
 		p.l.Error("error deleting athlete", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(err.Error())
+		serverErrorResponse(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -84,7 +83,7 @@ func (p athletesResultsRoutes) deleteAthletesForRace(w http.ResponseWriter, r *h
 	eventID, _ := uuid.Parse(eID)
 	err := p.service.DeleteAthletesForRace(r.Context(), raceID, eventID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverErrorResponse(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -93,16 +92,24 @@ func (p athletesResultsRoutes) deleteAthletesForRace(w http.ResponseWriter, r *h
 func (p athletesResultsRoutes) checkHeadersCSV(w http.ResponseWriter, r *http.Request) {
 	token, err := service.StoreTmpFile(r)
 	if err != nil {
-		http.Error(w, fmt.Errorf("error saving file: %w", err).Error(), http.StatusBadRequest)
+		serverErrorResponse(w, err)
 		return
 	}
 	par := service.NewAthleteImporterCSV(token, ";")
 	userHeaders, matchingHeaders, err := par.CompareHeaders()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverErrorResponse(w, err)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]any{"file_token": token, "user_headers": userHeaders, "matching_headers": matchingHeaders})
+	resp := map[string]any{
+		"file_token":       token,
+		"user_headers":     userHeaders,
+		"matching_headers": matchingHeaders,
+	}
+	err = writeJSON(w, http.StatusOK, resp, nil)
+	if err != nil {
+		serverErrorResponse(w, err)
+	}
 }
 
 func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +123,7 @@ func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.
 	par := service.NewAthleteImporterCSV(fileToken, ";")
 	athletes, err := par.ReadCSV(headers.Headers)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverErrorResponse(w, err)
 		return
 	}
 	// FIXME
@@ -126,6 +133,5 @@ func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.
 		if err != nil {
 			p.l.Error("error create athlete from csv: ", err)
 		}
-
 	}
 }
