@@ -71,7 +71,7 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v := validator.New()
-	rr.rcs.Validate(r.Context(), v, conf)
+	conf.Validate(r.Context(), v)
 
 	if !v.Valid() {
 		errorResponse(w, http.StatusBadRequest, v.Errors)
