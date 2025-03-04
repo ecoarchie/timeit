@@ -12,7 +12,7 @@ DELETE FROM categories
 WHERE id=$1;
 
 -- name: GetCategoriesForEvent :many
-SELECT (id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to)
+SELECT id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to
 FROM categories
 WHERE event_id=$1
 ORDER BY age_from ASC;

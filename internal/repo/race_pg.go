@@ -2,7 +2,10 @@ package repo
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -19,6 +22,12 @@ type RaceQuery interface {
 	AddOrUpdateSplit(ctx context.Context, arg database.AddOrUpdateSplitParams) (database.Split, error)
 	AddOrUpdateWave(ctx context.Context, arg database.AddOrUpdateWaveParams) (database.Wave, error)
 	AddOrUpdateCategory(ctx context.Context, arg database.AddOrUpdateCategoryParams) (database.Category, error)
+	GetRaceInfo(ctx context.Context, id uuid.UUID) (database.Race, error)
+	GetAllTimeReadersForRace(ctx context.Context, raceID uuid.UUID) ([]database.TimeReader, error)
+	GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]database.Event, error)
+	GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
+	GetAllWavesForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Wave, error)
+	GetCategoriesForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Category, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -173,5 +182,116 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 }
 
 func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceConfig, error) {
-	return nil, nil
+	r, err := rr.q.GetRaceInfo(ctx, raceID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	raceCfg := &entity.RaceConfig{
+		Race: &entity.Race{
+			ID:       r.ID,
+			Name:     r.RaceName,
+			Timezone: r.Timezone,
+		},
+		TimeReaders: []*entity.TimeReader{},
+		Events:      []*entity.EventConfig{},
+	}
+
+	// get all time readers for race
+	trs, err := rr.q.GetAllTimeReadersForRace(ctx, raceID)
+	if err != nil {
+		return nil, err
+	}
+	for _, tr := range trs {
+		reader := &entity.TimeReader{
+			ID:         tr.ID,
+			RaceID:     tr.RaceID,
+			ReaderName: tr.ReaderName,
+		}
+		raceCfg.TimeReaders = append(raceCfg.TimeReaders, reader)
+	}
+
+	// get all events for race
+	events, err := rr.q.GetAllEventsForRace(ctx, raceID)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range events {
+		event := &entity.EventConfig{
+			Event: &entity.Event{
+				ID:               e.ID,
+				RaceID:           e.RaceID,
+				Name:             e.EventName,
+				DistanceInMeters: int(e.DistanceInMeters),
+				EventDate:        e.EventDate.Time,
+			},
+			Splits:     []*entity.Split{},
+			Waves:      []*entity.Wave{},
+			Categories: []*entity.Category{},
+		}
+
+		// get splits for event
+		splits, err := rr.q.GetAllSplitsForEvent(ctx, e.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range splits {
+			split := &entity.Split{
+				ID:                s.ID,
+				RaceID:            s.RaceID,
+				EventID:           s.EventID,
+				Name:              s.SplitName,
+				Type:              entity.SplitType(s.SplitType),
+				DistanceFromStart: int(s.DistanceFromStart),
+				TimeReaderID:      s.TimeReaderID,
+				MinTime:           time.Duration(s.MinTime.Int64),
+				MaxTime:           time.Duration(s.MaxTime.Int64),
+				MinLapTime:        time.Duration(s.MinLapTime.Int64),
+			}
+			event.Splits = append(event.Splits, split)
+		}
+
+		// get waves for event
+		waves, err := rr.q.GetAllWavesForEvent(ctx, e.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range waves {
+			wave := &entity.Wave{
+				ID:         w.ID,
+				RaceID:     w.RaceID,
+				EventID:    w.EventID,
+				Name:       w.WaveName,
+				StartTime:  w.StartTime.Time,
+				IsLaunched: w.IsLaunched,
+			}
+			event.Waves = append(event.Waves, wave)
+		}
+
+		// get categories for event
+		cats, err := rr.q.GetCategoriesForEvent(ctx, e.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range cats {
+			category := &entity.Category{
+				ID:       c.ID,
+				RaceID:   c.RaceID,
+				EventID:  c.EventID,
+				Name:     c.CategoryName,
+				Gender:   entity.CategoryGender(c.Gender),
+				AgeFrom:  int(c.AgeFrom),
+				DateFrom: c.DateFrom.Time,
+				AgeTo:    int(c.AgeTo),
+				DateTo:   c.DateTo.Time,
+			}
+			event.Categories = append(event.Categories, category)
+		}
+
+		raceCfg.Events = append(raceCfg.Events, event)
+	}
+
+	return raceCfg, nil
 }

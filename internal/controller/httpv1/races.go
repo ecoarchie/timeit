@@ -30,7 +30,16 @@ func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Ha
 
 func (rr *raceRoutes) getRaceConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "race_id")
-	rr.rcs.GetRaceConfig(r.Context(), id)
+	cfg, err := rr.rcs.GetRaceConfig(r.Context(), id)
+	if err != nil {
+		serverErrorResponse(w, err)
+		return
+	}
+	if cfg == nil {
+		errorResponse(w, http.StatusNotFound, "race not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, cfg, nil)
 }
 
 func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {

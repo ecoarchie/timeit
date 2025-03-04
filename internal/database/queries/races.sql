@@ -7,3 +7,8 @@ RETURNING *;
 -- name: DeleteRace :exec
 DELETE FROM races
 WHERE id=$1;
+
+-- name: GetRaceInfo :one
+SELECT id, race_name, timezone
+FROM races
+WHERE id = $1;

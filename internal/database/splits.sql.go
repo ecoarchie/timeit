@@ -75,26 +75,74 @@ func (q *Queries) DeleteSplitByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const getAllSplitsForEvent = `-- name: GetAllSplitsForEvent :many
-SELECT 
-(id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time)
+SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time
 FROM splits
 WHERE event_id=$1
 ORDER BY distance_from_start ASC
 `
 
-func (q *Queries) GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]interface{}, error) {
+func (q *Queries) GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]Split, error) {
 	rows, err := q.db.Query(ctx, getAllSplitsForEvent, eventID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []interface{}
+	var items []Split
 	for rows.Next() {
-		var column_1 interface{}
-		if err := rows.Scan(&column_1); err != nil {
+		var i Split
+		if err := rows.Scan(
+			&i.ID,
+			&i.RaceID,
+			&i.EventID,
+			&i.SplitName,
+			&i.SplitType,
+			&i.DistanceFromStart,
+			&i.TimeReaderID,
+			&i.MinTime,
+			&i.MaxTime,
+			&i.MinLapTime,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, column_1)
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllSplitsForRace = `-- name: GetAllSplitsForRace :many
+SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time
+FROM splits
+WHERE race_id=$1
+ORDER BY distance_from_start ASC
+`
+
+func (q *Queries) GetAllSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]Split, error) {
+	rows, err := q.db.Query(ctx, getAllSplitsForRace, raceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Split
+	for rows.Next() {
+		var i Split
+		if err := rows.Scan(
+			&i.ID,
+			&i.RaceID,
+			&i.EventID,
+			&i.SplitName,
+			&i.SplitType,
+			&i.DistanceFromStart,
+			&i.TimeReaderID,
+			&i.MinTime,
+			&i.MaxTime,
+			&i.MinLapTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -72,25 +72,35 @@ func (q *Queries) DeleteCategoryByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const getCategoriesForEvent = `-- name: GetCategoriesForEvent :many
-SELECT (id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to)
+SELECT id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to
 FROM categories
 WHERE event_id=$1
 ORDER BY age_from ASC
 `
 
-func (q *Queries) GetCategoriesForEvent(ctx context.Context, eventID uuid.UUID) ([]interface{}, error) {
+func (q *Queries) GetCategoriesForEvent(ctx context.Context, eventID uuid.UUID) ([]Category, error) {
 	rows, err := q.db.Query(ctx, getCategoriesForEvent, eventID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []interface{}
+	var items []Category
 	for rows.Next() {
-		var column_1 interface{}
-		if err := rows.Scan(&column_1); err != nil {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.RaceID,
+			&i.EventID,
+			&i.CategoryName,
+			&i.Gender,
+			&i.AgeFrom,
+			&i.DateFrom,
+			&i.AgeTo,
+			&i.DateTo,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, column_1)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

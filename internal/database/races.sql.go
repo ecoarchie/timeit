@@ -40,3 +40,16 @@ func (q *Queries) DeleteRace(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteRace, id)
 	return err
 }
+
+const getRaceInfo = `-- name: GetRaceInfo :one
+SELECT id, race_name, timezone
+FROM races
+WHERE id = $1
+`
+
+func (q *Queries) GetRaceInfo(ctx context.Context, id uuid.UUID) (Race, error) {
+	row := q.db.QueryRow(ctx, getRaceInfo, id)
+	var i Race
+	err := row.Scan(&i.ID, &i.RaceName, &i.Timezone)
+	return i, err
+}

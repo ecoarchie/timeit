@@ -53,15 +53,17 @@ func (rc RaceService) CreateRace(ctx context.Context, req *entity.RaceFormData) 
 func (rc RaceService) GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error) {
 	uuID, err := uuid.Parse(raceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error parsing race UUID")
 	}
 	rconfig, err := rc.repo.GetRaceConfig(ctx, uuID)
 	if err != nil {
 		return nil, err
 	}
 	if rconfig == nil {
-		return nil, fmt.Errorf("race with id %s not found", raceID)
+		return nil, nil
 	}
+
+	// FIXME update RaceCache
 
 	return rconfig, nil
 }
