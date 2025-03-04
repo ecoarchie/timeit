@@ -53,3 +53,27 @@ func (q *Queries) GetRaceInfo(ctx context.Context, id uuid.UUID) (Race, error) {
 	err := row.Scan(&i.ID, &i.RaceName, &i.Timezone)
 	return i, err
 }
+
+const getRaces = `-- name: GetRaces :many
+SELECT id, race_name, timezone FROM races
+`
+
+func (q *Queries) GetRaces(ctx context.Context) ([]Race, error) {
+	rows, err := q.db.Query(ctx, getRaces)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Race
+	for rows.Next() {
+		var i Race
+		if err := rows.Scan(&i.ID, &i.RaceName, &i.Timezone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

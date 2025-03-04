@@ -108,8 +108,8 @@ type Athlete struct {
 	DateOfBirth     pgtype.Date
 	Phone           pgtype.Text
 	AthleteComments pgtype.Text
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
 }
 
 type AthleteSplit struct {
@@ -129,9 +129,9 @@ type Category struct {
 	CategoryName string
 	Gender       CategoryGender
 	AgeFrom      int32
-	DateFrom     pgtype.Timestamptz
+	DateFrom     pgtype.Timestamp
 	AgeTo        int32
-	DateTo       pgtype.Timestamptz
+	DateTo       pgtype.Timestamp
 }
 
 type ChipBib struct {
@@ -146,7 +146,7 @@ type Event struct {
 	RaceID           uuid.UUID
 	EventName        string
 	DistanceInMeters int32
-	EventDate        pgtype.Timestamptz
+	EventDate        pgtype.Timestamp
 }
 
 type EventAthlete struct {
@@ -168,7 +168,7 @@ type ReaderRecord struct {
 	ID         int32
 	RaceID     uuid.UUID
 	Chip       int32
-	Tod        pgtype.Timestamptz
+	Tod        pgtype.Timestamp
 	ReaderName string
 	CanUse     bool
 }
@@ -197,6 +197,6 @@ type Wave struct {
 	RaceID     uuid.UUID
 	EventID    uuid.UUID
 	WaveName   string
-	StartTime  pgtype.Timestamptz
+	StartTime  pgtype.Timestamp
 	IsLaunched bool
 }

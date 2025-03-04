@@ -12,3 +12,6 @@ WHERE id=$1;
 SELECT id, race_name, timezone
 FROM races
 WHERE id = $1;
+
+-- name: GetRaces :many
+SELECT id, race_name, timezone FROM races;

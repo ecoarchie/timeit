@@ -50,29 +50,6 @@ func writeJSON(w http.ResponseWriter, status int, data any, headers http.Header)
 	return nil
 }
 
-func errorResponse(w http.ResponseWriter, status int, message any) {
-	mes := map[string]any{"error": message}
-	err := writeJSON(w, status, mes, nil)
-	if err != nil {
-		w.WriteHeader(500)
-	}
-}
-
-func serverErrorResponse(w http.ResponseWriter, err error) {
-	message := fmt.Errorf("server error: %w", err)
-	errorResponse(w, http.StatusInternalServerError, message.Error())
-}
-
-func notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	message := "the requested resource could not be found"
-	errorResponse(w, http.StatusNotFound, message)
-}
-
-func methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
-	message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
-	errorResponse(w, http.StatusMethodNotAllowed, message)
-}
-
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	// Use http.MaxBytesReader() to limit the size of the request body to 5MB.
 	maxBytes := 1_048_576 * 5
@@ -114,8 +91,4 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
-}
-
-func failedValidationResponse(w http.ResponseWriter, errors map[string]string) {
-	errorResponse(w, http.StatusUnprocessableEntity, errors)
 }

@@ -27,7 +27,7 @@ type AddOrUpdateWaveParams struct {
 	RaceID     uuid.UUID
 	EventID    uuid.UUID
 	WaveName   string
-	StartTime  pgtype.Timestamptz
+	StartTime  pgtype.Timestamp
 	IsLaunched bool
 }
 

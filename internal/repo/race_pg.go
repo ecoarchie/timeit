@@ -22,6 +22,7 @@ type RaceQuery interface {
 	AddOrUpdateSplit(ctx context.Context, arg database.AddOrUpdateSplitParams) (database.Split, error)
 	AddOrUpdateWave(ctx context.Context, arg database.AddOrUpdateWaveParams) (database.Wave, error)
 	AddOrUpdateCategory(ctx context.Context, arg database.AddOrUpdateCategoryParams) (database.Category, error)
+	GetRaces(ctx context.Context) ([]database.Race, error)
 	GetRaceInfo(ctx context.Context, id uuid.UUID) (database.Race, error)
 	GetAllTimeReadersForRace(ctx context.Context, raceID uuid.UUID) ([]database.TimeReader, error)
 	GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]database.Event, error)
@@ -64,12 +65,10 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 		RaceName: r.Name,
 		Timezone: r.Timezone,
 	}
-	race, err := qtx.q.AddRace(ctx, addRaceParams)
+	_, err = qtx.q.AddRace(ctx, addRaceParams)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("race: %v\n", race)
 
 	// Save physical time_readers
 	for _, l := range r.TimeReaders {
@@ -91,7 +90,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 			RaceID:           e.RaceID,
 			EventName:        e.Name,
 			DistanceInMeters: int32(e.DistanceInMeters),
-			EventDate: pgtype.Timestamptz{
+			EventDate: pgtype.Timestamp{
 				Time:             e.EventDate,
 				InfinityModifier: 0,
 				Valid:            true,
@@ -138,7 +137,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				RaceID:   w.RaceID,
 				EventID:  w.EventID,
 				WaveName: w.Name,
-				StartTime: pgtype.Timestamptz{
+				StartTime: pgtype.Timestamp{
 					Time:             w.StartTime,
 					InfinityModifier: 0,
 					Valid:            true,
@@ -160,13 +159,13 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				CategoryName: c.Name,
 				Gender:       database.CategoryGender(c.Gender),
 				AgeFrom:      int32(c.AgeFrom),
-				DateFrom: pgtype.Timestamptz{
+				DateFrom: pgtype.Timestamp{
 					Time:             c.DateFrom,
 					InfinityModifier: 0,
 					Valid:            true,
 				},
 				AgeTo: int32(c.AgeTo),
-				DateTo: pgtype.Timestamptz{
+				DateTo: pgtype.Timestamp{
 					Time:             c.DateTo,
 					InfinityModifier: 0,
 					Valid:            true,
@@ -294,4 +293,37 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 	}
 
 	return raceCfg, nil
+}
+
+func (rr *RaceRepoPG) GetRaces(ctx context.Context) ([]*entity.Race, error) {
+	races, err := rr.q.GetRaces(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var res []*entity.Race
+	for _, r := range races {
+		race := &entity.Race{
+			ID:       r.ID,
+			Name:     r.RaceName,
+			Timezone: r.Timezone,
+		}
+		res = append(res, race)
+	}
+	return res, nil
+}
+
+func (rr *RaceRepoPG) SaveRaceInfo(ctx context.Context, race *entity.Race) error {
+	params := database.AddRaceParams{
+		ID:       race.ID,
+		RaceName: race.Name,
+		Timezone: race.Timezone,
+	}
+	_, err := rr.q.AddRace(ctx, params)
+	if err != nil {
+		return err
+	}
+	return nil
 }

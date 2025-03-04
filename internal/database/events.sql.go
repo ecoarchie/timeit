@@ -26,7 +26,7 @@ type AddOrUpdateEventParams struct {
 	RaceID           uuid.UUID
 	EventName        string
 	DistanceInMeters int32
-	EventDate        pgtype.Timestamptz
+	EventDate        pgtype.Timestamp
 }
 
 func (q *Queries) AddOrUpdateEvent(ctx context.Context, arg AddOrUpdateEventParams) (Event, error) {

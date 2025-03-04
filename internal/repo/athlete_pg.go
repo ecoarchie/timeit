@@ -127,7 +127,7 @@ func (ar *AthleteRepoPG) GetCategoryFor(ctx context.Context, p *entity.Athlete) 
 	params := database.GetCategoryForAthleteParams{
 		EventID: p.EventID,
 		Gender:  database.CategoryGender(p.Gender),
-		DateTo: pgtype.Timestamptz{
+		DateTo: pgtype.Timestamp{
 			Time:             p.DateOfBirth,
 			InfinityModifier: 0,
 			Valid:            true,

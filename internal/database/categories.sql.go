@@ -29,9 +29,9 @@ type AddOrUpdateCategoryParams struct {
 	CategoryName string
 	Gender       CategoryGender
 	AgeFrom      int32
-	DateFrom     pgtype.Timestamptz
+	DateFrom     pgtype.Timestamp
 	AgeTo        int32
-	DateTo       pgtype.Timestamptz
+	DateTo       pgtype.Timestamp
 }
 
 func (q *Queries) AddOrUpdateCategory(ctx context.Context, arg AddOrUpdateCategoryParams) (Category, error) {
@@ -120,7 +120,7 @@ AND $3 BETWEEN (date_to - (age_to || ' years')::INTERVAL) AND (date_from - (age_
 type GetCategoryForAthleteParams struct {
 	EventID uuid.UUID
 	Gender  CategoryGender
-	DateTo  pgtype.Timestamptz
+	DateTo  pgtype.Timestamp
 }
 
 func (q *Queries) GetCategoryForAthlete(ctx context.Context, arg GetCategoryForAthleteParams) (Category, error) {

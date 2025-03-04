@@ -36,7 +36,7 @@ func NewRaceCache() *RaceCache {
 	}
 }
 
-func (rc *RaceCache) StoreRaceConfig(cfg *entity.RaceConfig) {
+func (rc *RaceCache) UpdateWith(cfg *entity.RaceConfig) {
 	rc.clearRaceCache(cfg.ID)
 	rc.Races[cfg.ID] = &entity.Race{}
 	rc.Races[cfg.ID].Name = cfg.Name

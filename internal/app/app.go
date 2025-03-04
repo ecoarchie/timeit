@@ -32,16 +32,16 @@ func Run(cfg *config.Config) {
 	}
 	defer pool.Close()
 
-	db := database.New(pool)
+	queries := database.New(pool)
 
 	// Race Cache
 
 	raceCache := service.NewRaceCache()
 	// Services
 	logger.Info("Creating services")
-	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(db, pool))
+	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(queries, pool))
 
-	athleteRepo := repo.NewAthleteRepoPG(db, pool)
+	athleteRepo := repo.NewAthleteRepoPG(queries, pool)
 	athleteService := service.NewAthleteService(logger, athleteRepo, raceCache)
 	resultsService := service.NewResultsService(athleteRepo)
 

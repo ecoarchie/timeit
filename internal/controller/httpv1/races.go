@@ -11,26 +11,40 @@ import (
 )
 
 type raceRoutes struct {
-	rcs service.RaceConfigurator
-	l   logger.Interface
+	conf service.RaceConfigurator
+	log  logger.Interface
 }
 
-func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Handler {
-	l.Info("creating new race routes")
+func newRaceRoutes(log logger.Interface, conf service.RaceConfigurator) http.Handler {
+	log.Info("creating new race routes")
 	rr := &raceRoutes{
-		rcs: service,
-		l:   l,
+		conf: conf,
+		log:  log,
 	}
 	r := chi.NewRouter()
+	r.Get("/", rr.getRaces)
 	r.Post("/", rr.createRace)
 	r.Get("/{race_id}", rr.getRaceConfig)
 	r.Post("/save", rr.saveRaceConfig)
 	return r
 }
 
+func (rr *raceRoutes) getRaces(w http.ResponseWriter, r *http.Request) {
+	races, err := rr.conf.GetRaces(r.Context())
+	if err != nil {
+		serverErrorResponse(w, err)
+		return
+	}
+	if races == nil {
+		notFoundResponse(w, r)
+		return
+	}
+	writeJSON(w, http.StatusOK, races, nil)
+}
+
 func (rr *raceRoutes) getRaceConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "race_id")
-	cfg, err := rr.rcs.GetRaceConfig(r.Context(), id)
+	cfg, err := rr.conf.GetRaceConfig(r.Context(), id)
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
@@ -47,13 +61,13 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 	err := readJSON(w, r, &req)
 	if err != nil {
 		mes := "error parsing new race form"
-		rr.l.Error(mes, err)
+		rr.log.Error(mes, err)
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	race, err := rr.rcs.CreateRace(r.Context(), req)
+	race, err := rr.conf.CreateRace(r.Context(), req)
 	if err != nil {
-		rr.l.Error("error creating race", err)
+		rr.log.Error("error creating race", err)
 		serverErrorResponse(w, err)
 		return
 	}
@@ -65,7 +79,7 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	err := readJSON(w, r, &conf)
 	if err != nil {
 		mes := "error parsing race config form data"
-		rr.l.Error(mes, err)
+		rr.log.Error(mes, err)
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -74,16 +88,16 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	conf.Validate(r.Context(), v)
 
 	if !v.Valid() {
-		errorResponse(w, http.StatusBadRequest, v.Errors)
+		failedValidationResponse(w, v.Errors)
 		return
 	}
-	err = rr.rcs.Save(r.Context(), conf)
+	err = rr.conf.SaveRaceConfig(r.Context(), conf)
 	if err != nil {
 		mes := "error saving race config"
-		rr.l.Error(mes, err)
+		rr.log.Error(mes, err)
 		serverErrorResponse(w, err)
 		return
 	}
-	rr.l.Info("Config for race saved")
+	rr.log.Info("Config for race saved")
 	writeJSON(w, http.StatusNoContent, "", nil)
 }
