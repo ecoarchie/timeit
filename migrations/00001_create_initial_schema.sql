@@ -13,7 +13,7 @@ CREATE TABLE events (
   race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
   event_name TEXT NOT NULL,
   distance_in_meters INTEGER NOT NULL,
-  event_date TIMESTAMPTZ NOT NULL,
+  event_date TIMESTAMP NOT NULL,
   UNIQUE (race_id, id),
   UNIQUE (race_id, event_name)
 );
@@ -24,7 +24,7 @@ CREATE TABLE waves (
   race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   wave_name VARCHAR NOT NULL,
-  start_time TIMESTAMPTZ NOT NULL,
+  start_time TIMESTAMP NOT NULL,
   is_launched BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (race_id, event_id, id),
   UNIQUE (event_id, wave_name)
@@ -42,9 +42,9 @@ CREATE TABLE categories (
   category_name TEXT NOT NULL,
   gender category_gender NOT NULL,
   age_from INTEGER NOT NULL,
-  date_from TIMESTAMPTZ,
+  date_from TIMESTAMP,
   age_to INTEGER NOT NULL,
-  date_to TIMESTAMPTZ,
+  date_to TIMESTAMP,
   CHECK (age_from <= age_to),
   PRIMARY KEY (id),
   UNIQUE (id, race_id, event_id),
@@ -57,7 +57,7 @@ CREATE TABLE reader_records (
   id SERIAL PRIMARY KEY,
   race_id UUID NOT NULL,
   chip INTEGER NOT NULL,
-  tod TIMESTAMPTZ NOT NULL,
+  tod TIMESTAMP NOT NULL,
   reader_name TEXT NOT NULL,
   can_use BOOLEAN NOT NULL DEFAULT TRUE
 );
@@ -108,8 +108,8 @@ CREATE TABLE athletes (
   date_of_birth DATE,
   phone TEXT,
   athlete_comments TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
   FOREIGN KEY (race_id) REFERENCES races (id) ON DELETE CASCADE
 );
 
