@@ -7,14 +7,18 @@ import (
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/pkg/logger"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/google/uuid"
 )
+
+type ValidationErrors map[string]string
 
 // TODO separate errors to ErrorToSave (preventing from saving) and Warning (can save, just pay attention)
 // TODO add category boundaries validation
 
 type RaceConfigurator interface {
-	Save(ctx context.Context, rc *entity.RaceConfig) []error
+	Validate(ctx context.Context, v *validator.Validator, rc *entity.RaceConfig)
+	Save(ctx context.Context, rc *entity.RaceConfig) error
 	CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error)
 	GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error)
 }
@@ -62,187 +66,133 @@ func (rc RaceService) GetRaceConfig(ctx context.Context, raceID string) (*entity
 	return rconfig, nil
 }
 
-func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) []error {
-	errors := rs.validate(rc)
-	if len(errors) != 0 {
-		return errors
-	}
+func (rs RaceService) Save(ctx context.Context, rc *entity.RaceConfig) error {
 	err := rs.repo.SaveRaceConfig(ctx, rc)
 	if err != nil {
 		const msg = "error saving race to repo"
 		rs.l.Error(msg, err)
-		errors = append(errors, err)
+		return err
 	}
 	rs.raceCache.StoreRaceConfig(rc)
 	rs.l.Info("race cache updated")
-	return errors
-}
-
-func (rs RaceService) validate(rc *entity.RaceConfig) []error {
-	errors := []error{}
-	if err := validateRace(rc.Race); err != nil {
-		errors = append(errors, err)
-	}
-
-	if err := validateTimeReaders(rc.TimeReaders); err != nil {
-		errors = append(errors, err)
-		return errors
-	}
-
-	if len(rc.Events) == 0 {
-		errors = append(errors, fmt.Errorf("race must have at least one event"))
-		return errors
-	}
-	for _, ec := range rc.Events {
-		if err := validateEventConfig(rc.Race, rc.TimeReaders, ec); err != nil {
-			errors = append(errors, err...)
-		}
-	}
-	return errors
-}
-
-func validateRace(race *entity.Race) error {
-	if err := entity.IsValidTimezone(race.Timezone); err != nil {
-		return err
-	}
-	if race.Name == "" {
-		return fmt.Errorf("empty race name")
-	}
 	return nil
 }
 
-func validateTimeReaders(locs []*entity.TimeReader) error {
-	if len(locs) == 0 {
-		return fmt.Errorf("race must have at least one physical time_reader")
-	}
-	boxNames := make(map[string]struct{})
+func (rs RaceService) Validate(ctx context.Context, v *validator.Validator, rc *entity.RaceConfig) {
+	validateRace(v, rc.Race)
 
-	// Loop through time_readers and check for uniqueness
-	for _, l := range locs {
-		if _, exists := boxNames[l.ReaderName]; exists {
-			return fmt.Errorf("duplicate box name found: %s", l.ReaderName)
-		}
-		boxNames[l.ReaderName] = struct{}{}
+	v.Check(len(rc.TimeReaders) > 0, "time readers", "race must have at least one time reader")
+	if len(rc.TimeReaders) > 0 {
+		validateTimeReaders(v, rc.TimeReaders, rc.Race.ID)
 	}
-	return nil
+
+	v.Check(len(rc.Events) != 0, "events", "must be at least one")
+	if len(rc.Events) > 0 {
+		var eventNames []string
+		for _, e := range rc.Events {
+			eventNames = append(eventNames, e.Name)
+		}
+		v.Check(validator.Unique(eventNames), "event names", "must be unique")
+		for _, ec := range rc.Events {
+			validateEventConfig(v, rc.Race, rc.TimeReaders, ec)
+		}
+	}
 }
 
-func validateEventConfig(race *entity.Race, locs []*entity.TimeReader, ec *entity.EventConfig) []error {
-	errors := []error{}
-	if race.ID != ec.RaceID {
-		errors = append(errors, fmt.Errorf("wrong race id for event %s", ec.Name))
-	}
-	if ec.ID == uuid.Nil {
-		errors = append(errors, fmt.Errorf("empty event id for event %s", ec.Name))
-	}
-	if ec.Name == "" {
-		errors = append(errors, fmt.Errorf("empty event name"))
-	}
-	if ec.DistanceInMeters <= 0 {
-		errors = append(errors, fmt.Errorf("distance for event %s must be greater than 0", ec.Name))
-	}
-
-	if len(ec.Splits) == 0 {
-		errors = append(errors, fmt.Errorf("event must have at least one split"))
-	}
-
-	if len(errors) != 0 {
-		return errors
-	}
-
-	for _, tp := range ec.Splits {
-		if err := validateSplit(ec.RaceID, ec.ID, locs, tp); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	for _, w := range ec.Waves {
-		if err := validateWave(race.ID, ec.ID, w); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	// pass addr of Category to update its BirthDate fields
-	for _, c := range ec.Categories {
-		if err := validateCategory(race.ID, ec.ID, ec.EventDate, c); err != nil {
-			errors = append(errors, err)
-		}
-	}
-	return errors
+func validateRace(v *validator.Validator, race *entity.Race) {
+	v.Check(entity.IsIANATimezone(race.Timezone), "timezone", "must be valid IANA timezone")
+	v.Check(race.Name != "", "race name", "must not be empty")
 }
 
-func validateCategory(raceID, eventID uuid.UUID, eventDate time.Time, c *entity.Category) error {
-	if raceID == uuid.Nil || raceID != c.RaceID {
-		return fmt.Errorf("empty or invalid raceID for category")
+func validateTimeReaders(v *validator.Validator, readers []*entity.TimeReader, raceID uuid.UUID) {
+	var timeReadersNames []string
+	for _, r := range readers {
+		timeReadersNames = append(timeReadersNames, r.ReaderName)
+		v.Check(r.RaceID == raceID, "timers raceID", "must correspond to ID of configurated race")
 	}
-	if eventID == uuid.Nil || eventID != c.EventID {
-		return fmt.Errorf("empty or invalid eventID for category")
-	}
-	if c.Name == "" {
-		return fmt.Errorf("empty split name")
-	}
-	if !entity.IsValidGender(c.Gender) {
-		return fmt.Errorf("invalid gender")
-	}
-	if c.AgeFrom < 0 {
-		return fmt.Errorf("from age must be greater or equal to 0")
-	}
-	if c.AgeTo < 0 {
-		return fmt.Errorf("to age must be greater or equal to 0")
-	}
-	if c.AgeFrom > c.AgeTo {
-		return fmt.Errorf("upper age limit must be greater than lower age limit")
-	}
-	return nil
+	v.Check(validator.Unique(timeReadersNames), "time readers names", "must be unique")
 }
 
-func validateWave(raceID, eventID uuid.UUID, w *entity.Wave) error {
-	if raceID == uuid.Nil || raceID != w.RaceID {
-		return fmt.Errorf("empty or invalid raceID for wave")
-	}
-	if eventID == uuid.Nil || eventID != w.EventID {
-		return fmt.Errorf("empty or invalid eventID for wave")
-	}
-	if w.Name == "" {
-		return fmt.Errorf("empty wave name")
-	}
-	return nil
-}
+func validateEventConfig(v *validator.Validator, race *entity.Race, readers []*entity.TimeReader, ec *entity.EventConfig) {
+	v.Check(race.ID == ec.RaceID, "race_id for event", "must correspond to ID of configurated race")
+	v.Check(ec.ID != uuid.Nil, "event_id", "must not be empty")
+	v.Check(ec.Name != "", "event_name", "must not be empty")
+	v.Check(ec.DistanceInMeters > 0, "event distance_in_meters", "must be greater than 0")
 
-func validateSplit(raceID, eventID uuid.UUID, locs []*entity.TimeReader, tp *entity.Split) error {
-	if raceID == uuid.Nil {
-		return fmt.Errorf("empty raceID")
-	}
-	if eventID != tp.EventID {
-		return fmt.Errorf("wrong event id for timint point")
-	}
-	if tp.Name == "" {
-		return fmt.Errorf("empty split name")
-	}
-	if tp.Type == "" || !entity.IsValidSplitType(tp.Type) {
-		return fmt.Errorf("empty or invalid split type")
-	}
-	if tp.DistanceFromStart < 0 {
-		return fmt.Errorf("distance from start must be equal or greater than 0")
-	}
-
-	// check box name for split
-	if tp.TimeReaderID.String() == "" {
-		return fmt.Errorf("empty time_reader ID")
-	}
-	unknownBoxID := true
-	for _, l := range locs {
-		if l.ID == tp.TimeReaderID {
-			unknownBoxID = false
+	v.Check(len(ec.Splits) != 0, "splits", "event must have at least one split")
+	if len(ec.Splits) > 0 {
+		var splitsNames []string
+		splitTypeQty := make(map[entity.SplitType]int)
+		for _, split := range ec.Splits {
+			splitsNames = append(splitsNames, split.Name)
+			splitTypeQty[split.Type]++
+			validateSplit(v, ec.RaceID, ec.ID, readers, split)
 		}
-	}
-	if unknownBoxID {
-		return fmt.Errorf("unknown box ID for split")
+		v.Check(validator.Unique(splitsNames), "splits", "must have unique names for event")
+		v.Check(splitTypeQty[entity.SplitTypeStart] < 2, "split with type start", "must be 0 or 1")
+		v.Check(splitTypeQty[entity.SplitTypeFinish] != 0, "split with type finish", "must be configured")
+		v.Check(splitTypeQty[entity.SplitTypeFinish] < 2, "split with type finish", "must not be more than 1")
 	}
 
-	// check time restrictions
-	if tp.MinTime < 0 || tp.MaxTime < 0 || tp.MinLapTime < 0 {
-		return fmt.Errorf("min, max and lap times must be equal or greater than 0")
+	v.Check(len(ec.Waves) > 0, "waves", "must be at least one for event")
+	if len(ec.Waves) > 0 {
+		var wavesNames []string
+		for _, w := range ec.Waves {
+			wavesNames = append(wavesNames, w.Name)
+			validateWave(v, race.ID, ec.ID, w)
+		}
+		v.Check(validator.Unique(wavesNames), "waves", "must have unique names for event")
 	}
-	return nil
+
+	if len(ec.Categories) > 0 {
+		var categoryNames []string
+		for _, c := range ec.Categories {
+			categoryNames = append(categoryNames, c.Name)
+			validateCategory(v, race.ID, ec.ID, ec.EventDate, c)
+		}
+		v.Check(validator.Unique(categoryNames), "categories", "must have unique names for event")
+	}
+}
+
+func validateCategory(v *validator.Validator, raceID, eventID uuid.UUID, eventDate time.Time, c *entity.Category) {
+	v.Check(raceID != uuid.Nil, "category race_id", "must not be empty")
+	v.Check(raceID == c.RaceID, "category race_id", "must correspond to ID of configurated race")
+	v.Check(eventID != uuid.Nil, "category event_id", "must not be empty")
+	v.Check(eventID == c.EventID, "category event_id", "invalid event ID for category")
+	v.Check(c.Name != "", "category name", "must not be empty")
+	v.Check(entity.IsValidGender(c.Gender), "gender", "must be male, female or mixed")
+	v.Check(c.AgeFrom >= 0, "category age from", "must be greater or equal to 0")
+	v.Check(c.AgeTo > 0, "category age to", "must be greater than 0")
+	v.Check(c.AgeFrom < c.AgeTo, "category age", "upper age limit must be greater than lower age limit")
+}
+
+func validateWave(v *validator.Validator, raceID, eventID uuid.UUID, w *entity.Wave) {
+	v.Check(raceID != uuid.Nil, "wave race ID", "must not be null")
+	v.Check(raceID == w.RaceID, "wave's race ID", "must correspond to ID of configurated race")
+	v.Check(eventID != uuid.Nil, "wave's event ID", "must not be null")
+	v.Check(eventID == w.EventID, "wave's evengt ID", "must correspond to ID of configurated event")
+	v.Check(w.Name != "", "wave name", "must not be empty")
+}
+
+func validateSplit(v *validator.Validator, raceID, eventID uuid.UUID, readers []*entity.TimeReader, split *entity.Split) {
+	v.Check(raceID != uuid.Nil, "split's race ID", "must not be nil")
+	v.Check(raceID == split.RaceID, "split's race ID", "must correspond to ID of configurated race")
+	v.Check(eventID == split.EventID, "split's event ID", "must correspond to ID of configurated event")
+	v.Check(eventID != uuid.Nil, "split's event ID", "must not be null")
+	v.Check(split.Name != "", "split name", "must not be empty")
+	v.Check(split.Type != "", "split type", "must not be empty")
+	v.Check(entity.IsValidSplitType(split.Type), "split type", "must be start, standard or finish")
+	v.Check(split.DistanceFromStart >= 0, "split distance from start", "must be greater or equal to 0")
+
+	v.Check(split.TimeReaderID.String() != "", "split ID", "must not be empty")
+	var tpIDsForLocs []uuid.UUID
+	for _, l := range readers {
+		tpIDsForLocs = append(tpIDsForLocs, l.ID)
+	}
+
+	v.Check(validator.PermittedValue(split.TimeReaderID, tpIDsForLocs...), "split ID", "must have valid corresponded time reader")
+
+	v.Check(split.MinTime >= 0, "split min time", "must be greater or equal to 0")
+	v.Check(split.MaxTime >= 0, "split max time", "must be greater or equal to 0")
+	v.Check(split.MinLapTime >= 0, "split min lap time", "must be greater or equal to 0")
 }

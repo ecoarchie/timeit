@@ -1,7 +1,6 @@
 package httpv1
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -49,7 +48,6 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
 	var req entity.AthleteCreateRequest
 	err := readJSON(w, r, &req)
-	// json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -123,7 +121,11 @@ func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.
 	var headers struct {
 		Headers []string `json:"headers"`
 	}
-	json.NewDecoder(r.Body).Decode(&headers)
+	err := readJSON(w, r, &headers)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	par := service.NewAthleteImporterCSV(fileToken, ";")
 	athletes, err := par.ReadCSV(headers.Headers)
 	if err != nil {

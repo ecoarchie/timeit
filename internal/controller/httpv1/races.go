@@ -1,12 +1,12 @@
 package httpv1
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/service"
 	"github.com/ecoarchie/timeit/pkg/logger"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -23,23 +23,23 @@ func newRaceRoutes(l logger.Interface, service service.RaceConfigurator) http.Ha
 	}
 	r := chi.NewRouter()
 	r.Post("/", rr.createRace)
-	r.Get("/{race_id}", rr.getRace)
+	r.Get("/{race_id}", rr.getRaceConfig)
 	r.Post("/save", rr.saveRaceConfig)
 	return r
 }
 
-func (rr *raceRoutes) getRace(w http.ResponseWriter, r *http.Request) {
+func (rr *raceRoutes) getRaceConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "race_id")
 	rr.rcs.GetRaceConfig(r.Context(), id)
 }
 
 func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 	var req *entity.RaceFormData
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err := readJSON(w, r, &req)
 	if err != nil {
 		mes := "error parsing new race form"
 		rr.l.Error(mes, err)
-		errorResponse(w, http.StatusBadRequest, mes)
+		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	race, err := rr.rcs.CreateRace(r.Context(), req)
@@ -53,26 +53,28 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	var conf *entity.RaceConfig
-	err := json.NewDecoder(r.Body).Decode(&conf)
+	err := readJSON(w, r, &conf)
 	if err != nil {
 		mes := "error parsing race config form data"
 		rr.l.Error(mes, err)
-		errorResponse(w, http.StatusBadRequest, mes)
+		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// TODO add check for db save error for proper error reponse code
-	errs := rr.rcs.Save(r.Context(), conf)
-	if len(errs) != 0 {
+	v := validator.New()
+	rr.rcs.Validate(r.Context(), v, conf)
+
+	if !v.Valid() {
+		errorResponse(w, http.StatusBadRequest, v.Errors)
+		return
+	}
+	err = rr.rcs.Save(r.Context(), conf)
+	if err != nil {
 		mes := "error saving race config"
-		rr.l.Error(mes, errs)
-		errorResponse(w, http.StatusBadRequest, mes)
+		rr.l.Error(mes, err)
+		serverErrorResponse(w, err)
 		return
 	}
 	rr.l.Info("Config for race saved")
-	w.Write([]byte("ok"))
+	writeJSON(w, http.StatusNoContent, "", nil)
 }
-
-// func (rr *raceRoutes) getResultsForAthlete(w http.ResponseWriter, r *http.Request) {
-// 	rr.results.ResultsForAthlete()
-// }

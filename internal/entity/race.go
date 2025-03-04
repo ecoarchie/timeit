@@ -14,8 +14,8 @@ type Race struct {
 }
 
 func NewRace(req *RaceFormData) (*Race, error) {
-	if err := IsValidTimezone(req.Timezone); err != nil {
-		return nil, err
+	if !IsIANATimezone(req.Timezone) {
+		return nil, fmt.Errorf("not valid IANA timezone")
 	}
 	if req.Name == "" {
 		return nil, fmt.Errorf("empty race name")
@@ -31,10 +31,7 @@ func NewRace(req *RaceFormData) (*Race, error) {
 	}, nil
 }
 
-func IsValidTimezone(tz string) error {
-	if tz == "" {
-		return fmt.Errorf("empty timezone in race config")
-	}
+func IsIANATimezone(tz string) bool {
 	_, err := time.LoadLocation(tz) // tz must correspond to IANA time zones names
-	return err
+	return err == nil
 }

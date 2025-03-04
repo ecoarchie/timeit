@@ -50,8 +50,8 @@ func writeJSON(w http.ResponseWriter, status int, data any, headers http.Header)
 	return nil
 }
 
-func errorResponse(w http.ResponseWriter, status int, message string) {
-	mes := map[string]string{"error": message}
+func errorResponse(w http.ResponseWriter, status int, message any) {
+	mes := map[string]any{"error": message}
 	err := writeJSON(w, status, mes, nil)
 	if err != nil {
 		w.WriteHeader(500)
@@ -114,4 +114,8 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
+}
+
+func failedValidationResponse(w http.ResponseWriter, errors map[string]string) {
+	errorResponse(w, http.StatusUnprocessableEntity, errors)
 }
