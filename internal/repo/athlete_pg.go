@@ -6,10 +6,10 @@ import (
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
+	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ParticipantQuery interface {
@@ -30,21 +30,21 @@ type ParticipantQuery interface {
 }
 
 type AthleteRepoPG struct {
-	q    ParticipantQuery
-	pool *pgxpool.Pool
+	q  ParticipantQuery
+	pg *postgres.Postgres
 }
 
-func NewAthleteRepoPG(q ParticipantQuery, pool *pgxpool.Pool) *AthleteRepoPG {
+func NewAthleteRepoPG(q ParticipantQuery, pg *postgres.Postgres) *AthleteRepoPG {
 	return &AthleteRepoPG{
-		q:    q,
-		pool: pool,
+		q:  q,
+		pg: pg,
 	}
 }
 
 func (ar *AthleteRepoPG) WithTx(tx pgx.Tx) *AthleteRepoPG {
 	return &AthleteRepoPG{
-		q:    ar.q.WithTx(tx),
-		pool: ar.pool,
+		q:  ar.q.WithTx(tx),
+		pg: ar.pg,
 	}
 }
 
@@ -57,7 +57,7 @@ func (ar *AthleteRepoPG) WithTx(tx pgx.Tx) *AthleteRepoPG {
 // }
 
 func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) error {
-	tx, err := ar.pool.Begin(ctx)
+	tx, err := ar.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,7 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 			Valid:  true,
 		},
 	}
+
 	_, err = qtx.q.CreateOrUpdateAthlete(ctx, aParams)
 	if err != nil {
 		return err
@@ -176,7 +177,7 @@ func (ar *AthleteRepoPG) GetAthleteByID(ctx context.Context, athleteID uuid.UUID
 }
 
 func (ar *AthleteRepoPG) DeleteAthletesForRace(ctx context.Context, raceID uuid.UUID) error {
-	tx, err := ar.pool.Begin(ctx)
+	tx, err := ar.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -197,7 +198,7 @@ func (ar *AthleteRepoPG) DeleteAthletesForRace(ctx context.Context, raceID uuid.
 }
 
 func (ar *AthleteRepoPG) DeleteAthletesForRaceWithEventID(ctx context.Context, raceID, eventID uuid.UUID) error {
-	tx, err := ar.pool.Begin(ctx)
+	tx, err := ar.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -222,7 +223,7 @@ func (ar *AthleteRepoPG) DeleteAthletesForRaceWithEventID(ctx context.Context, r
 }
 
 func (ar *AthleteRepoPG) DeleteAthlete(ctx context.Context, a *entity.Athlete) error {
-	tx, err := ar.pool.Begin(ctx)
+	tx, err := ar.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}

@@ -34,11 +34,11 @@ type (
 
 	// PG -.
 	PG struct {
-		URL string `env-required:"true" env:"PG_URL"`
+		URL     string `env-required:"true" env:"PG_URL"`
+		PoolMax int    `env:"PG_POOL_MAX"`
 	}
 )
 
-// NewConfig returns app config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
 	err := godotenv.Load()

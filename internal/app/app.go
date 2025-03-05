@@ -1,9 +1,7 @@
 package app
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,33 +13,30 @@ import (
 	"github.com/ecoarchie/timeit/internal/service"
 	"github.com/ecoarchie/timeit/pkg/httpserver"
 	"github.com/ecoarchie/timeit/pkg/logger"
+	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func Run(cfg *config.Config) {
 	logger := logger.New(cfg.Log.Level)
 
-	// BUG add proper check for db initialization
-	// Postgres pool
-	logger.Info("Initializint postgres pool")
-	pool, err := pgxpool.New(context.Background(), cfg.PG.URL)
+	// Repository
+	pg, err := postgres.New(cfg.PG.URL, postgres.MaxPoolSize(cfg.PG.PoolMax))
 	if err != nil {
-		log.Fatal("Cannot connect to database")
-		os.Exit(1)
+		logger.Fatal(fmt.Errorf("app - Run - postgres.New: %w", err).Error())
 	}
-	defer pool.Close()
+	defer pg.Close()
 
-	queries := database.New(pool)
+	queries := database.New(pg.Pool)
 
 	// Race Cache
-
 	raceCache := service.NewRaceCache()
+
 	// Services
 	logger.Info("Creating services")
-	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(queries, pool))
+	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(queries, pg))
 
-	athleteRepo := repo.NewAthleteRepoPG(queries, pool)
+	athleteRepo := repo.NewAthleteRepoPG(queries, pg)
 	athleteService := service.NewAthleteService(logger, athleteRepo, raceCache)
 	resultsService := service.NewResultsService(athleteRepo)
 

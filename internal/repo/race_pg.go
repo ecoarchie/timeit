@@ -9,10 +9,10 @@ import (
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
+	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type RaceQuery interface {
@@ -33,26 +33,26 @@ type RaceQuery interface {
 }
 
 type RaceRepoPG struct {
-	q    RaceQuery
-	pool *pgxpool.Pool
+	q  RaceQuery
+	pg *postgres.Postgres
 }
 
-func NewRaceRepoPG(q RaceQuery, pool *pgxpool.Pool) *RaceRepoPG {
+func NewRaceRepoPG(q RaceQuery, pg *postgres.Postgres) *RaceRepoPG {
 	return &RaceRepoPG{
-		q:    q,
-		pool: pool,
+		q:  q,
+		pg: pg,
 	}
 }
 
 func (rr *RaceRepoPG) WithTx(tx pgx.Tx) *RaceRepoPG {
 	return &RaceRepoPG{
-		q:    rr.q.WithTx(tx),
-		pool: rr.pool,
+		q:  rr.q.WithTx(tx),
+		pg: rr.pg,
 	}
 }
 
 func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) error {
-	tx, err := rr.pool.Begin(ctx)
+	tx, err := rr.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
