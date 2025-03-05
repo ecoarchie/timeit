@@ -15,6 +15,7 @@ import (
 	"github.com/ecoarchie/timeit/pkg/logger"
 	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func Run(cfg *config.Config) {
@@ -45,11 +46,12 @@ func Run(cfg *config.Config) {
 	// Routers
 	logger.Info("Creating routers")
 	router := chi.NewRouter()
+	router.Use(middleware.Logger)
 	httpv1.NewRaceRouter(router, logger, raceService)
 	httpv1.NewAthleteResultsRouter(router, logger, pRes)
 	httpServer := httpserver.New(router, httpserver.Port(cfg.HTTP.Port))
 
-	logger.Info("Starting server at", cfg.HTTP.Port)
+	logger.Info("Starting server at", "port", cfg.HTTP.Port)
 
 	// Waiting signal
 	interrupt := make(chan os.Signal, 1)

@@ -47,7 +47,12 @@ func New(url string, opts ...Option) (*Postgres, error) {
 	for pg.connAttempts > 0 {
 		pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
 		if err == nil {
-			break
+			if pingErr := pg.Pool.Ping(context.Background()); pingErr == nil {
+				break
+			} else {
+				// TODO Should I close the old connection here?
+				log.Println("failed ping to database")
+			}
 		}
 		log.Printf("Postgres is trying to connect, attempts left: %d", pg.connAttempts)
 		time.Sleep(pg.connTimeout)
@@ -56,6 +61,9 @@ func New(url string, opts ...Option) (*Postgres, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("postgres - NewPostgres - connAttempts == 0: %w", err)
+	}
+	if err := pg.Pool.Ping(context.Background()); err != nil {
+		log.Fatalf("Database is unreachable: %v", err)
 	}
 	return pg, nil
 }

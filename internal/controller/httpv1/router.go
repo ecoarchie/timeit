@@ -16,7 +16,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewRaceRouter(handler *chi.Mux, l logger.Interface, raceService service.RaceConfigurator) {
+func NewRaceRouter(handler *chi.Mux, logger *logger.Logger, raceService service.RaceConfigurator) {
 	handler.NotFound(notFoundResponse)
 	handler.MethodNotAllowed(methodNotAllowedResponse)
 
@@ -27,11 +27,11 @@ func NewRaceRouter(handler *chi.Mux, l logger.Interface, raceService service.Rac
 	})
 
 	// Routers
-	handler.Mount("/races", newRaceRoutes(l, raceService))
+	handler.Mount("/races", newRaceRoutes(logger, raceService))
 }
 
-func NewAthleteResultsRouter(handler *chi.Mux, l logger.Interface, manager service.AthleteResultsManager) {
-	handler.Mount("/races/{race_id}/athletes", newAthletesResultsRoutes(l, manager))
+func NewAthleteResultsRouter(handler *chi.Mux, logger *logger.Logger, manager service.AthleteResultsManager) {
+	handler.Mount("/races/{race_id}/athletes", newAthletesResultsRoutes(logger, manager))
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {

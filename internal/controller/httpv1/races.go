@@ -12,11 +12,10 @@ import (
 
 type raceRoutes struct {
 	conf service.RaceConfigurator
-	log  logger.Interface
+	log  *logger.Logger
 }
 
-func newRaceRoutes(log logger.Interface, conf service.RaceConfigurator) http.Handler {
-	log.Info("creating new race routes")
+func newRaceRoutes(log *logger.Logger, conf service.RaceConfigurator) http.Handler {
 	rr := &raceRoutes{
 		conf: conf,
 		log:  log,
@@ -50,6 +49,7 @@ func (rr *raceRoutes) getRaceConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if cfg == nil {
+		rr.log.Debug("race not found", "raceID", id)
 		errorResponse(w, http.StatusNotFound, "race not found")
 		return
 	}

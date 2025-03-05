@@ -32,14 +32,14 @@ type AthleteRepo interface {
 const TimeFormatDDMMYYYY = "02.01.2006"
 
 type AthleteService struct {
-	l     logger.Interface
+	log   *logger.Logger
 	repo  AthleteRepo
 	cache *RaceCache
 }
 
-func NewAthleteService(logger logger.Interface, repo AthleteRepo, cache *RaceCache) *AthleteService {
+func NewAthleteService(logger *logger.Logger, repo AthleteRepo, cache *RaceCache) *AthleteService {
 	return &AthleteService{
-		l:     logger,
+		log:   logger,
 		repo:  repo,
 		cache: cache,
 	}

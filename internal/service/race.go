@@ -31,10 +31,10 @@ type RaceRepo interface {
 type RaceService struct {
 	raceCache *RaceCache
 	repo      RaceRepo
-	log       logger.Interface
+	log       *logger.Logger
 }
 
-func NewRaceService(logger logger.Interface, rc *RaceCache, repo RaceRepo) *RaceService {
+func NewRaceService(logger *logger.Logger, rc *RaceCache, repo RaceRepo) *RaceService {
 	return &RaceService{
 		log:       logger,
 		raceCache: rc,

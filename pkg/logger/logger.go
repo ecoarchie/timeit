@@ -7,77 +7,69 @@ import (
 )
 
 // Interface -.
-type Interface interface {
-	Debug(message string, args ...interface{})
-	Info(message string, args ...interface{})
-	Warn(message string, args ...interface{})
-	Error(message string, args ...interface{})
-	Fatal(message string, args ...interface{})
-}
+// type Interface interface {
+// 	Debug(message string, args ...interface{})
+// 	Info(message string, args ...interface{})
+// 	Warn(message string, args ...interface{})
+// 	Error(message string, args ...interface{})
+// 	Fatal(message string, args ...interface{})
+// }
 
 // Logger -.
 type Logger struct {
-	logger *slog.Logger
+	*slog.Logger
 }
 
-var _ Interface = (*Logger)(nil)
+// var _ Interface = (*Logger)(nil)
 
-// New -.
 func New(level string) *Logger {
 	var l slog.Level
-	var addSource bool
 
 	switch strings.ToLower(level) {
 	case "error":
 		l = slog.LevelError
-		addSource = false
 	case "warn":
-		l = slog.LevelInfo
-		addSource = false
+		l = slog.LevelWarn
 	case "info":
 		l = slog.LevelInfo
-		addSource = false
 	case "debug":
 		l = slog.LevelDebug
-		addSource = false
 	default:
 		l = slog.LevelInfo
-		addSource = false
 	}
 	opts := &slog.HandlerOptions{
-		Level:     l,
-		AddSource: addSource,
+		Level: l,
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
 
 	return &Logger{
-		logger: logger,
+		logger,
 	}
 }
 
-// Debug -.
-func (l *Logger) Debug(message string, args ...interface{}) {
-	l.logger.Debug(message, args...)
-}
+// // Debug -.
+// func (l *Logger) Debug(message string, args ...interface{}) {
+// 	l.logger.Debug(message, args...)
+// }
 
-// Info -.
-func (l *Logger) Info(message string, args ...interface{}) {
-	l.logger.Info(message, args...)
-}
+// // Info -.
+// func (l *Logger) Info(message string, args ...interface{}) {
+// 	l.logger.Info(message, args...)
+// }
 
-// Warn -.
-func (l *Logger) Warn(message string, args ...interface{}) {
-	l.logger.Warn(message, args...)
-}
+// // Warn -.
+// func (l *Logger) Warn(message string, args ...interface{}) {
+// 	l.logger.Warn(message, args...)
+// }
 
-// Error -.
-func (l *Logger) Error(message string, args ...interface{}) {
-	l.logger.Error(message, args...)
-}
+// // Error -.
+// func (l *Logger) Error(message string, args ...interface{}) {
+// 	l.logger.Error(message, args...)
+// }
 
 // Fatal -.
 func (l *Logger) Fatal(message string, args ...interface{}) {
-	l.logger.Error(message, args...)
+	l.Error(message, args...)
 	os.Exit(1)
 }

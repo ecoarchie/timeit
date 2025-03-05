@@ -12,14 +12,14 @@ import (
 
 type athletesResultsRoutes struct {
 	service service.AthleteResultsManager
-	l       logger.Interface
+	logger  *logger.Logger
 }
 
-func newAthletesResultsRoutes(l logger.Interface, service service.AthleteResultsManager) http.Handler {
-	l.Info("creating new race routes")
+func newAthletesResultsRoutes(logger *logger.Logger, service service.AthleteResultsManager) http.Handler {
+	logger.Info("creating new race routes")
 	rr := &athletesResultsRoutes{
 		service: service,
-		l:       l,
+		logger:  logger,
 	}
 	r := chi.NewRouter()
 	r.Get("/{athlete_id}", rr.athleteByID)
@@ -55,7 +55,7 @@ func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *htt
 	a, err := p.service.CreateAthlete(r.Context(), req)
 	if err != nil {
 		mes := "error creating athlete"
-		p.l.Error(mes, err)
+		p.logger.Error(mes, err)
 		errorResponse(w, http.StatusBadRequest, mes)
 		return
 	}
@@ -71,7 +71,7 @@ func (p athletesResultsRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.
 	aUUID, _ := uuid.Parse(athleteID)
 	err := p.service.DeleteAthlete(r.Context(), aUUID)
 	if err != nil {
-		p.l.Error("error deleting athlete", err)
+		p.logger.Error("error deleting athlete", err)
 		serverErrorResponse(w, err)
 		return
 	}
@@ -137,7 +137,7 @@ func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.
 	for _, a := range athletReqs {
 		_, err := p.service.CreateAthlete(r.Context(), a)
 		if err != nil {
-			p.l.Error("error create athlete from csv: ", err)
+			p.logger.Error("error create athlete from csv: ", err)
 		}
 	}
 }
