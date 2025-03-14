@@ -16,19 +16,23 @@ import (
 )
 
 type RaceQuery interface {
+	GetRaces(ctx context.Context) ([]database.Race, error)
+	GetRaceInfo(ctx context.Context, id uuid.UUID) (database.Race, error)
 	AddRace(ctx context.Context, arg database.AddRaceParams) (database.Race, error)
+	DeleteRace(ctx context.Context, id uuid.UUID) error
 	AddOrUpdateTimeReader(ctx context.Context, arg database.AddOrUpdateTimeReaderParams) (database.TimeReader, error)
 	AddOrUpdateEvent(ctx context.Context, arg database.AddOrUpdateEventParams) (database.Event, error)
 	AddOrUpdateSplit(ctx context.Context, arg database.AddOrUpdateSplitParams) (database.Split, error)
 	AddOrUpdateWave(ctx context.Context, arg database.AddOrUpdateWaveParams) (database.Wave, error)
 	AddOrUpdateCategory(ctx context.Context, arg database.AddOrUpdateCategoryParams) (database.Category, error)
-	GetRaces(ctx context.Context) ([]database.Race, error)
-	GetRaceInfo(ctx context.Context, id uuid.UUID) (database.Race, error)
-	GetAllTimeReadersForRace(ctx context.Context, raceID uuid.UUID) ([]database.TimeReader, error)
-	GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]database.Event, error)
-	GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
-	GetAllWavesForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Wave, error)
+	GetTimeReadersForRace(ctx context.Context, raceID uuid.UUID) ([]database.TimeReader, error)
+	GetEventsForRace(ctx context.Context, raceID uuid.UUID) ([]database.Event, error)
+	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
+	GetWavesForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Wave, error)
+	GetWavesForRace(ctx context.Context, raceID uuid.UUID) ([]database.Wave, error)
 	GetCategoriesForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Category, error)
+	GetWaveByID(ctx context.Context, id uuid.UUID) (database.Wave, error)
+	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -111,17 +115,23 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				SplitType:         database.TpType(tp.Type),
 				DistanceFromStart: int32(tp.DistanceFromStart),
 				TimeReaderID:      tp.TimeReaderID,
-				MinTime: pgtype.Int8{
-					Int64: int64(tp.MinTime),
-					Valid: true,
+				MinTime: pgtype.Interval{
+					Microseconds: time.Duration(tp.MinTime).Microseconds(),
+					Days:         0,
+					Months:       0,
+					Valid:        true,
 				},
-				MaxTime: pgtype.Int8{
-					Int64: int64(tp.MaxTime),
-					Valid: true,
+				MaxTime: pgtype.Interval{
+					Microseconds: time.Duration(tp.MaxTime).Microseconds(),
+					Days:         0,
+					Months:       0,
+					Valid:        true,
 				},
-				MinLapTime: pgtype.Int8{
-					Int64: int64(tp.MinLapTime),
-					Valid: true,
+				MinLapTime: pgtype.Interval{
+					Microseconds: time.Duration(tp.MinLapTime).Microseconds(),
+					Days:         0,
+					Months:       0,
+					Valid:        true,
 				},
 			}
 			_, err := qtx.q.AddOrUpdateSplit(ctx, tpParams)
@@ -199,7 +209,7 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 	}
 
 	// get all time readers for race
-	trs, err := rr.q.GetAllTimeReadersForRace(ctx, raceID)
+	trs, err := rr.q.GetTimeReadersForRace(ctx, raceID)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +223,7 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 	}
 
 	// get all events for race
-	events, err := rr.q.GetAllEventsForRace(ctx, raceID)
+	events, err := rr.q.GetEventsForRace(ctx, raceID)
 	if err != nil {
 		return nil, err
 	}
@@ -226,18 +236,18 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 				DistanceInMeters: int(e.DistanceInMeters),
 				EventDate:        e.EventDate.Time,
 			},
-			Splits:     []*entity.Split{},
+			Splits:     []*entity.SplitConfig{},
 			Waves:      []*entity.Wave{},
 			Categories: []*entity.Category{},
 		}
 
 		// get splits for event
-		splits, err := rr.q.GetAllSplitsForEvent(ctx, e.ID)
+		splits, err := rr.q.GetSplitsForEvent(ctx, e.ID)
 		if err != nil {
 			return nil, err
 		}
 		for _, s := range splits {
-			split := &entity.Split{
+			split := &entity.SplitConfig{
 				ID:                s.ID,
 				RaceID:            s.RaceID,
 				EventID:           s.EventID,
@@ -245,15 +255,15 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 				Type:              entity.SplitType(s.SplitType),
 				DistanceFromStart: int(s.DistanceFromStart),
 				TimeReaderID:      s.TimeReaderID,
-				MinTime:           time.Duration(s.MinTime.Int64),
-				MaxTime:           time.Duration(s.MaxTime.Int64),
-				MinLapTime:        time.Duration(s.MinLapTime.Int64),
+				MinTime:           entity.Duration(s.MinTime.Microseconds * 1000),
+				MaxTime:           entity.Duration(s.MaxTime.Microseconds * 1000),
+				MinLapTime:        entity.Duration(s.MinLapTime.Microseconds * 1000),
 			}
 			event.Splits = append(event.Splits, split)
 		}
 
 		// get waves for event
-		waves, err := rr.q.GetAllWavesForEvent(ctx, e.ID)
+		waves, err := rr.q.GetWavesForEvent(ctx, e.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -326,4 +336,75 @@ func (rr *RaceRepoPG) SaveRaceInfo(ctx context.Context, race *entity.Race) error
 		return err
 	}
 	return nil
+}
+
+func (rr *RaceRepoPG) DeleteRace(ctx context.Context, raceID uuid.UUID) error {
+	err := rr.q.DeleteRace(ctx, raceID)
+	return err
+}
+
+func (rr *RaceRepoPG) GetWavesForRace(ctx context.Context, raceID uuid.UUID) ([]*entity.Wave, error) {
+	ws, err := rr.q.GetWavesForRace(ctx, raceID)
+	if err != nil {
+		return nil, err
+	}
+	if ws == nil {
+		return nil, nil
+	}
+	waves := []*entity.Wave{}
+	for _, w := range ws {
+		wave := &entity.Wave{
+			ID:         w.ID,
+			RaceID:     w.RaceID,
+			EventID:    w.EventID,
+			Name:       w.WaveName,
+			StartTime:  w.StartTime.Time,
+			IsLaunched: w.IsLaunched,
+		}
+		waves = append(waves, wave)
+	}
+	return waves, nil
+}
+
+func (rr *RaceRepoPG) GetWaveByID(ctx context.Context, waveID uuid.UUID) (*entity.Wave, error) {
+	w, err := rr.q.GetWaveByID(ctx, waveID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	wave := &entity.Wave{
+		ID:         w.ID,
+		RaceID:     w.RaceID,
+		EventID:    w.EventID,
+		Name:       w.WaveName,
+		StartTime:  w.StartTime.Time,
+		IsLaunched: w.IsLaunched,
+	}
+	return wave, nil
+}
+
+func (rr *RaceRepoPG) SaveWave(ctx context.Context, wave *entity.Wave) error {
+	wParams := database.AddOrUpdateWaveParams{
+		ID:       wave.ID,
+		RaceID:   wave.RaceID,
+		EventID:  wave.EventID,
+		WaveName: wave.Name,
+		StartTime: pgtype.Timestamp{
+			Time:             wave.StartTime,
+			InfinityModifier: 0,
+			Valid:            true,
+		},
+		IsLaunched: wave.IsLaunched,
+	}
+	_, err := rr.q.AddOrUpdateWave(ctx, wParams)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (rr *RaceRepoPG) GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error) {
+	return rr.q.GetEventIDsWithWavesStarted(ctx, raceID)
 }

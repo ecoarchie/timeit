@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -26,6 +27,8 @@ type ParticipantQuery interface {
 	// DeleteEventAthlete(ctx context.Context, arg database.DeleteEventAthleteParams) error
 	GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (database.EventAthlete, error)
 	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
+	GetEventAthleteRecords(ctx context.Context, arg database.GetEventAthleteRecordsParams) ([]database.GetEventAthleteRecordsRow, error)
+	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -111,10 +114,7 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 		AthleteID:  p.ID,
 		WaveID:     p.WaveID,
 		CategoryID: p.CategoryID,
-		Bib: pgtype.Int4{
-			Int32: int32(p.Bib),
-			Valid: true,
-		},
+		Bib:        int32(p.Bib),
 	}
 
 	_, err = qtx.q.AddEventAthlete(ctx, eaParams)
@@ -128,7 +128,7 @@ func (ar *AthleteRepoPG) GetCategoryFor(ctx context.Context, p *entity.Athlete) 
 	params := database.GetCategoryForAthleteParams{
 		EventID: p.EventID,
 		Gender:  database.CategoryGender(p.Gender),
-		DateTo: pgtype.Timestamp{
+		DateFrom: pgtype.Timestamp{
 			Time:             p.DateOfBirth,
 			InfinityModifier: 0,
 			Valid:            true,
@@ -244,4 +244,40 @@ func (ar *AthleteRepoPG) DeleteAthlete(ctx context.Context, a *entity.Athlete) e
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsRow, []*entity.Split, error) {
+	ss, err := ar.q.GetSplitsForEvent(ctx, eventID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	eaParams := database.GetEventAthleteRecordsParams{
+		RaceID:  raceID,
+		EventID: eventID,
+	}
+	records, err := ar.q.GetEventAthleteRecords(ctx, eaParams)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	splits := []*entity.Split{}
+	for _, s := range ss {
+		split := &entity.Split{
+			ID:                 s.ID,
+			RaceID:             s.RaceID,
+			EventID:            s.EventID,
+			Name:               s.SplitName,
+			Type:               entity.SplitType(s.SplitType),
+			DistanceFromStart:  int(s.DistanceFromStart),
+			TimeReaderID:       s.TimeReaderID,
+			MinTime:            time.Duration(s.MinTime.Microseconds * 1000),
+			MaxTime:            time.Duration(s.MaxTime.Microseconds * 1000),
+			MinLapTime:         time.Duration(s.MinLapTime.Microseconds * 1000),
+			PreviousLapSplitID: s.PreviousLapSplitID,
+		}
+		splits = append(splits, split)
+	}
+
+	return records, splits, nil
 }

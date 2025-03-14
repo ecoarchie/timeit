@@ -18,7 +18,7 @@ INSERT INTO categories
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id)
 DO UPDATE
-SET category_name=EXCLUDED. category_name, gender=EXCLUDED.gender, age_from=EXCLUDED.age_from, date_from=EXCLUDED.date_from, age_to=EXCLUDED.age_to, date_to=EXCLUDED.date_to
+SET category_name=EXCLUDED.category_name, gender=EXCLUDED.gender, age_from=EXCLUDED.age_from, date_from=EXCLUDED.date_from, age_to=EXCLUDED.age_to, date_to=EXCLUDED.date_to
 RETURNING id, race_id, event_id, category_name, gender, age_from, date_from, age_to, date_to
 `
 
@@ -114,17 +114,17 @@ FROM categories
 WHERE 
 event_id = $1 
 AND gender = $2 
-AND $3 BETWEEN (date_to - (age_to || ' years')::INTERVAL) AND (date_from - (age_from || ' years')::INTERVAL)
+AND $3 BETWEEN date_from AND date_to
 `
 
 type GetCategoryForAthleteParams struct {
-	EventID uuid.UUID
-	Gender  CategoryGender
-	DateTo  pgtype.Timestamp
+	EventID  uuid.UUID
+	Gender   CategoryGender
+	DateFrom pgtype.Timestamp
 }
 
 func (q *Queries) GetCategoryForAthlete(ctx context.Context, arg GetCategoryForAthleteParams) (Category, error) {
-	row := q.db.QueryRow(ctx, getCategoryForAthlete, arg.EventID, arg.Gender, arg.DateTo)
+	row := q.db.QueryRow(ctx, getCategoryForAthlete, arg.EventID, arg.Gender, arg.DateFrom)
 	var i Category
 	err := row.Scan(
 		&i.ID,

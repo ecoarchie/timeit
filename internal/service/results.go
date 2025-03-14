@@ -1,14 +1,17 @@
 package service
 
 import (
+	"context"
+	"fmt"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/google/uuid"
 )
 
 type ResultsManager interface {
-	ResultForAthlete(id uuid.UUID) *entity.AthleteResult
+	GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([][]*entity.AthleteSplit, error)
 }
 
 type ResultsService struct {
@@ -22,98 +25,118 @@ func NewResultsService(repo AthleteRepo) *ResultsService {
 }
 
 // TODO
-func (rs ResultsService) ResultForAthlete(id uuid.UUID) *entity.AthleteResult {
+func (rs ResultsService) ResultForAthlete(id uuid.UUID) *entity.AthleteSplit {
 	return nil
 }
 
 // TODO
-func (rs ResultsService) GetResults(pr *entity.AthleteResult, recs []entity.ReaderRecord, waveStartTime time.Time, tps []*entity.Split) (*entity.AthleteResult, error) {
-	// tps are splits for athletes' event from race cache
-	// tps are sorted by distance from start
-	// recs are only for particular athlete chip, sorted by TOD
-	// resc must be valid, canUse = true
-	// wave is athletes' wave. assuming that wave status is 'started'
-	tpBoxes := make(map[TimeReaderID][]*entity.Split)
-	var startingSplit *entity.Split
-	// ps := entity.NewAthleteResults(athlete)
-	for _, tp := range tps {
-		tpBoxes[tp.TimeReaderID] = append(tpBoxes[tp.TimeReaderID], tp)
-		if tp.Type == entity.SplitTypeStart {
-			startingSplit = tp
-		}
+func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([][]*entity.AthleteSplit, error) {
+	recs, splits, err := rs.AthleteRepo.GetRecordsAndSplitsForEventAthlete(ctx, raceID, eventID)
+	if err != nil {
+		return nil, err
 	}
+	for _, s := range splits {
+		fmt.Printf("splid ID: %v, name: %s, prevLap: %v, min_time: %v, max_time: %v, min_lap_time: %v\n", s.ID, s.Name, s.PreviousLapSplitID, s.MinTime, s.MaxTime, s.MinLapTime)
+	}
+
+	allRecords := [][]*entity.AthleteSplit{}
+	splitMap := arrangeSplitsByReaderName(splits)
 	for _, r := range recs {
-		// BUG r.RaceID should be r.ReaderName. But since tp doesn't have boxname field - I need to rewrite logic completly
-		res := rs.ResultForRecord(r, waveStartTime, tpBoxes[r.RaceID], pr, startingSplit)
-		if res == nil {
+		if len(r.Records) == 0 {
 			continue
 		}
-		// BUG check if split of type 'start' doesn't exist at all
-		_, exists := pr.Results[res.SplitID]
-		if exists && res.SplitID != startingSplit.ID {
-			// TODO skip creating result for finish and standard types of Splits. Later the rule for finish and standard type may change from 'first read' to 'last read'
-			continue
+		res, err := getResultForSingleAthlete(r, splits, splitMap)
+		if err != nil {
+			return nil, err
 		}
-		// BUG check for prevlap rule. After that delete pr passed to ResultForRecord func
-		pr.Results[res.SplitID] = res
+		allRecords = append(allRecords, res)
 	}
-	return pr, nil
+	return allRecords, nil
 }
 
-func (rs ResultsService) ResultForRecord(r entity.ReaderRecord, waveStartTime time.Time, tps []*entity.Split, pr *entity.AthleteResult, startingSplit *entity.Split) *entity.SplitResult {
-	if r.TOD.Before(waveStartTime) {
-		// record is before wave start, thus check next record
-		return nil
+func arrangeSplitsByReaderName(ss []*entity.Split) map[SplitID]*entity.Split {
+	ssMap := map[SplitID]*entity.Split{}
+	for _, s := range ss {
+		ssMap[s.ID] = s
 	}
-	res := &entity.SplitResult{}
-	for i, tp := range tps {
-		// if tp.Type == entity.SplitTypeFinish || tp.Type == entity.SplitTypeStandard {
-		// 	// if there is already result for standard or finish Split then skip
-		// 	if _, ok := ps.Results[tp.ID]; ok {
-		// 		return nil
-		// 	}
-		// }
-		// ps.Results[tp.ID] = &entity.SplitResult{
-		// 	SplitID: tp.ID,
-		// }
-		validMinTime := waveStartTime.Add(tp.MinTime)
-		var validMaxTime time.Time
-		if tp.MaxTime == 0 {
-			validMaxTime = waveStartTime.Add(time.Hour * 240)
-		} else {
-			validMaxTime = waveStartTime.Add(tp.MaxTime)
-		}
-		if (r.TOD.Equal(validMinTime) || r.TOD.After(validMinTime)) && (r.TOD.Equal(validMaxTime) || r.TOD.Before(validMaxTime)) {
-			if i > 0 {
-				prevLapSplit := tps[i-1]
-				if r.TOD.Sub(pr.Results[prevLapSplit.ID].TOD) < tp.MinLapTime {
-					return nil
+	return ssMap
+}
+
+func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*entity.Split, splitMap map[SplitID]*entity.Split) ([]*entity.AthleteSplit, error) {
+	// create slice for athlete's splits which will be populated further
+	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
+	athleteResultsMap := make(map[SplitID]*entity.AthleteSplit, len(splits))
+	fmt.Printf("Check Athlete with ID: %v\n", r.AthleteID)
+
+	for i, recTOD := range r.Records {
+		recReader := r.ReaderIds[i]
+		// iterate over splits for this event to find valid split for record's tod
+		fmt.Printf("Checking TOD %v\n", recTOD)
+		for j, s := range splits {
+			// check if split reader id matches record's reader name
+			if s.TimeReaderID != recReader {
+				continue
+			}
+			// check min_time, max_time constraint
+			prevLapSplitResult := athleteResultsMap[s.PreviousLapSplitID.UUID]
+			if !isValidSplit(r.WaveStart.Time, recTOD.Time, s, prevLapSplitResult) {
+				continue
+			}
+
+			// check if such athlete result for this split is already in results map
+			_, exist := athleteResultsMap[s.ID]
+
+			// for type 'start' existing results must be overwritten, for 'standard' and 'finish' existing must be kept unchanged
+			if !exist || s.Type == entity.SplitTypeStart {
+				// FIXME add checking if start type split is not configured at all
+				var netTime time.Duration
+				if s.Type != entity.SplitTypeStart {
+					netTime = recTOD.Time.Sub(singleAthleteRecords[0].TOD)
 				}
+				res := &entity.AthleteSplit{
+					RaceID:    s.RaceID,
+					EventID:   s.EventID,
+					AthleteID: r.AthleteID,
+					SplitID:   s.ID,
+					TOD:       recTOD.Time,
+					GunTime:   recTOD.Time.Sub(r.WaveStart.Time),
+					NetTime:   netTime,
+				}
+				athleteResultsMap[s.ID] = res
+				singleAthleteRecords[j] = res
+				continue
 			}
-			recTODfromStart := r.TOD.Sub(waveStartTime)
-			var startCalculated bool
-			if startingSplit != nil {
-				_, startCalculated = pr.Results[startingSplit.ID]
-			}
+		}
+		fmt.Println()
+		fmt.Println()
+	}
+	for _, s := range singleAthleteRecords {
+		fmt.Println(s)
+	}
+	return singleAthleteRecords, nil
+}
 
-			res.SplitID = tp.ID
-			// Calculate gun time
-			res.GunTime = recTODfromStart
+func isValidSplit(waveStart time.Time, tod time.Time, s *entity.Split, prev *entity.AthleteSplit) bool {
+	fmt.Printf("Checking split %s, for record %v, with prevResult %v\n", s.Name, tod, prev)
+	if tod.Before(waveStart) {
+		return false
+	}
+	validMinTime := waveStart.Add(s.MinTime)
+	var validMaxTime time.Time
+	if s.MaxTime == 0 {
+		validMaxTime = waveStart.Add(time.Hour * 240) // FIXME replace this magic with const max time
+	} else {
+		validMaxTime = waveStart.Add(s.MaxTime)
+	}
 
-			// TODO add test case with absent start point
-			// Calculate net time
-			if tp.Type == entity.SplitTypeStart || (tp.Type != entity.SplitTypeStart && !startCalculated) || startingSplit == nil {
-				res.NetTime = recTODfromStart
-			} else {
-				res.NetTime = r.TOD.Sub(pr.Results[startingSplit.ID].TOD)
-			}
-
-			// Calculate TOD
-			res.TOD = r.TOD
-
-			// skip checking the rest timming points for that reader_name
-			return res
+	if !((tod.Equal(validMinTime) || tod.After(validMinTime)) && (tod.Equal(validMaxTime) || tod.Before(validMaxTime))) {
+		return false
+	}
+	if prev != nil {
+		if prev.TOD.Add(s.MinLapTime).After(tod) {
+			return false
 		}
 	}
-	return nil
+	fmt.Printf("Split %s is valid\n\n", s.Name)
+	return true
 }

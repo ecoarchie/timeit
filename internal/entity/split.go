@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,16 +17,44 @@ const (
 )
 
 type Split struct {
-	ID                uuid.UUID     `json:"split_id"`
-	RaceID            uuid.UUID     `json:"race_id"`
-	EventID           uuid.UUID     `json:"event_id"`
-	Name              string        `json:"split_name"`
-	Type              SplitType     `json:"split_type"`
-	DistanceFromStart int           `json:"distance_from_start"`
-	TimeReaderID      uuid.UUID     `json:"time_reader_id"`
-	MinTime           time.Duration `json:"min_time_sec"`
-	MaxTime           time.Duration `json:"max_time_sec"`
-	MinLapTime        time.Duration `json:"min_lap_time_sec"`
+	ID                 uuid.UUID     `json:"split_id"`
+	RaceID             uuid.UUID     `json:"race_id"`
+	EventID            uuid.UUID     `json:"event_id"`
+	Name               string        `json:"split_name"`
+	Type               SplitType     `json:"split_type"`
+	DistanceFromStart  int           `json:"distance_from_start"`
+	TimeReaderID       uuid.UUID     `json:"time_reader_id"`
+	MinTime            time.Duration `json:"min_time_sec"`
+	MaxTime            time.Duration `json:"max_time_sec"`
+	MinLapTime         time.Duration `json:"min_lap_time_sec"`
+	PreviousLapSplitID uuid.NullUUID
+}
+
+type Duration time.Duration
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String())
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		*d = Duration(time.Duration(value))
+		return nil
+	case string:
+		tmp, err := time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		*d = Duration(tmp)
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
 }
 
 // func (tp *Split) SetValidMinMaxTimes(athleteWaceStart time.Time) {

@@ -3,6 +3,8 @@ package validator
 import (
 	"regexp"
 	"slices"
+
+	"github.com/google/uuid"
 )
 
 var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
@@ -44,6 +46,11 @@ func PermittedValue[T comparable](value T, permittedValues ...T) bool {
 // Matches returns true if a string value matches a specific regexp pattern.
 func Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
+}
+
+func IsUUID(value string) bool {
+	_, err := uuid.Parse(value)
+	return err == nil
 }
 
 // Generic function which returns true if all values in a slice are unique.

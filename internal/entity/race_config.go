@@ -16,9 +16,21 @@ type RaceConfig struct {
 
 type EventConfig struct {
 	*Event
-	Splits     []*Split    `json:"splits"`
-	Waves      []*Wave     `json:"waves"`
-	Categories []*Category `json:"categories"`
+	Splits     []*SplitConfig `json:"splits"`
+	Waves      []*Wave        `json:"waves"`
+	Categories []*Category    `json:"categories"`
+}
+type SplitConfig struct {
+	ID                uuid.UUID `json:"split_id"`
+	RaceID            uuid.UUID `json:"race_id"`
+	EventID           uuid.UUID `json:"event_id"`
+	Name              string    `json:"split_name"`
+	Type              SplitType `json:"split_type"`
+	DistanceFromStart int       `json:"distance_from_start"`
+	TimeReaderID      uuid.UUID `json:"time_reader_id"`
+	MinTime           Duration  `json:"min_time_sec"`
+	MaxTime           Duration  `json:"max_time_sec"`
+	MinLapTime        Duration  `json:"min_lap_time_sec"`
 }
 
 type RaceFormData struct {
@@ -132,7 +144,7 @@ func validateWave(v *validator.Validator, raceID, eventID uuid.UUID, w *Wave) {
 	v.Check(w.Name != "", "wave name", "must not be empty")
 }
 
-func validateSplit(v *validator.Validator, raceID, eventID uuid.UUID, readers []*TimeReader, split *Split) {
+func validateSplit(v *validator.Validator, raceID, eventID uuid.UUID, readers []*TimeReader, split *SplitConfig) {
 	v.Check(raceID != uuid.Nil, "split's race ID", "must not be nil")
 	v.Check(raceID == split.RaceID, "split's race ID", "must correspond to ID of configurated race")
 	v.Check(eventID == split.EventID, "split's event ID", "must correspond to ID of configurated event")

@@ -18,8 +18,8 @@ type (
 type RaceCache struct {
 	Races       map[RaceID]*entity.Race
 	Events      map[EventID]*entity.Event
-	Splits      map[SplitID]*entity.Split
-	EventSplits map[EventID][]*entity.Split
+	Splits      map[SplitID]*entity.SplitConfig
+	EventSplits map[EventID][]*entity.SplitConfig
 	Waves       map[WaveID]*entity.Wave
 	TimeReaders map[TimeReaderID]*entity.TimeReader
 	mu          sync.RWMutex
@@ -29,8 +29,8 @@ func NewRaceCache() *RaceCache {
 	return &RaceCache{
 		Races:       make(map[RaceID]*entity.Race),
 		Events:      make(map[EventID]*entity.Event),
-		Splits:      make(map[SplitID]*entity.Split),
-		EventSplits: make(map[EventID][]*entity.Split),
+		Splits:      make(map[SplitID]*entity.SplitConfig),
+		EventSplits: make(map[EventID][]*entity.SplitConfig),
 		Waves:       make(map[WaveID]*entity.Wave),
 		TimeReaders: make(map[TimeReaderID]*entity.TimeReader),
 	}
@@ -65,9 +65,9 @@ func (rc *RaceCache) clearRaceCache(raceID uuid.UUID) {
 	rc.removeTimeReadersForRace(raceID)
 }
 
-func (rc *RaceCache) GetSplitsForEventTimeReader(eventID uuid.UUID, TimeReaderID uuid.UUID) []*entity.Split {
+func (rc *RaceCache) GetSplitsForEventTimeReader(eventID uuid.UUID, TimeReaderID uuid.UUID) []*entity.SplitConfig {
 	rc.mu.RLock()
-	tps := []*entity.Split{}
+	tps := []*entity.SplitConfig{}
 	for _, tp := range rc.EventSplits[eventID] {
 		if tp.TimeReaderID == TimeReaderID {
 			tps = append(tps, tp)
@@ -131,13 +131,13 @@ func (rc *RaceCache) removeEventsForRace(raceID uuid.UUID) {
 }
 
 // Timing Points
-func (rc *RaceCache) StoreSplit(tp *entity.Split) {
+func (rc *RaceCache) StoreSplit(tp *entity.SplitConfig) {
 	rc.mu.Lock()
 	rc.Splits[tp.ID] = tp
 	rc.mu.Unlock()
 }
 
-func (rc *RaceCache) GetSplit(id uuid.UUID) (*entity.Split, bool) {
+func (rc *RaceCache) GetSplit(id uuid.UUID) (*entity.SplitConfig, bool) {
 	rc.mu.RLock()
 	tp, found := rc.Splits[id]
 	rc.mu.RUnlock()
@@ -215,7 +215,7 @@ func (rc *RaceCache) removeTimeReadersForRace(raceID uuid.UUID) {
 }
 
 // Event splits
-func (rc *RaceCache) StoreEventSplits(eventID uuid.UUID, tps []*entity.Split) {
+func (rc *RaceCache) StoreEventSplits(eventID uuid.UUID, tps []*entity.SplitConfig) {
 	rc.mu.Lock()
 	rc.EventSplits[eventID] = tps
 	rc.mu.Unlock()

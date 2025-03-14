@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/pkg/logger"
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ type AthleteRepo interface {
 	DeleteAthlete(ctx context.Context, a *entity.Athlete) error
 	DeleteAthletesForRace(ctx context.Context, raceID uuid.UUID) error
 	DeleteAthletesForRaceWithEventID(ctx context.Context, raceID, eventID uuid.UUID) error
+	GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsRow, []*entity.Split, error)
 }
 
 const TimeFormatDDMMYYYY = "02.01.2006"
@@ -62,6 +64,7 @@ func (ps *AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteC
 	// TODO check if category with this ID is exists. Complete rewrite here
 	if !req.CategoryID.Valid {
 		err := ps.assignCategory(ctx, p)
+		fmt.Println("assign category for athlete: ", req.Bib, p.CategoryID)
 		if err != nil {
 			fmt.Println("error assigning category", err)
 		}
@@ -145,7 +148,9 @@ func (as *AthleteService) DeleteAthletesForRace(ctx context.Context, raceID, eve
 
 func (as *AthleteService) FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest {
 	eventsMap := as.cache.GetEventNameIDforRace(raceID)
+	fmt.Println("events Map: ", eventsMap)
 	waves := as.cache.GetWavesForRace(raceID)
+	fmt.Println("waves ", waves)
 	var res []entity.AthleteCreateRequest
 	for _, a := range data {
 		eID := eventsMap[a.Event]
@@ -171,9 +176,12 @@ func (as *AthleteService) FromCSVtoRequestAthlete(raceID uuid.UUID, data []*Athl
 			LastName:    a.LastName,
 			Gender:      entity.CategoryGender(a.Gender),
 			DateOfBirth: dob,
-			CategoryID:  uuid.NullUUID{},
-			Phone:       a.Phone,
-			Comments:    a.Comments,
+			CategoryID: uuid.NullUUID{
+				UUID:  uuid.UUID{},
+				Valid: false,
+			},
+			Phone:    a.Phone,
+			Comments: a.Comments,
 		}
 		res = append(res, r)
 	}

@@ -62,15 +62,69 @@ func (q *Queries) DeleteWaveByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const getAllWavesForEvent = `-- name: GetAllWavesForEvent :many
+const getWaveByID = `-- name: GetWaveByID :one
+SELECT id, race_id, event_id, wave_name, start_time, is_launched
+FROM waves
+WHERE id=$1
+`
+
+func (q *Queries) GetWaveByID(ctx context.Context, id uuid.UUID) (Wave, error) {
+	row := q.db.QueryRow(ctx, getWaveByID, id)
+	var i Wave
+	err := row.Scan(
+		&i.ID,
+		&i.RaceID,
+		&i.EventID,
+		&i.WaveName,
+		&i.StartTime,
+		&i.IsLaunched,
+	)
+	return i, err
+}
+
+const getWavesForEvent = `-- name: GetWavesForEvent :many
 SELECT id, race_id, event_id, wave_name, start_time, is_launched
 FROM waves
 WHERE event_id=$1
 ORDER BY start_time ASC
 `
 
-func (q *Queries) GetAllWavesForEvent(ctx context.Context, eventID uuid.UUID) ([]Wave, error) {
-	rows, err := q.db.Query(ctx, getAllWavesForEvent, eventID)
+func (q *Queries) GetWavesForEvent(ctx context.Context, eventID uuid.UUID) ([]Wave, error) {
+	rows, err := q.db.Query(ctx, getWavesForEvent, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Wave
+	for rows.Next() {
+		var i Wave
+		if err := rows.Scan(
+			&i.ID,
+			&i.RaceID,
+			&i.EventID,
+			&i.WaveName,
+			&i.StartTime,
+			&i.IsLaunched,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWavesForRace = `-- name: GetWavesForRace :many
+SELECT id, race_id, event_id, wave_name, start_time, is_launched
+FROM waves
+WHERE race_id=$1
+ORDER BY start_time ASC
+`
+
+func (q *Queries) GetWavesForRace(ctx context.Context, raceID uuid.UUID) ([]Wave, error) {
+	rows, err := q.db.Query(ctx, getWavesForRace, raceID)
 	if err != nil {
 		return nil, err
 	}

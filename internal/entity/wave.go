@@ -16,6 +16,16 @@ type Wave struct {
 	IsLaunched bool      `json:"is_launched"`
 }
 
+type WaveStart struct {
+	WaveID    uuid.UUID `json:"wave_id"`
+	StartTime time.Time `json:"wave_start_time"`
+}
+
+// type WaveStartRequest struct {
+// 	WaveID    string `json:"wave_id"`
+// 	StartTime time.Time `json:"wave_start_time"`
+// }
+
 func NewWave(raceID uuid.UUID, eventID uuid.UUID, name string, startTime time.Time) (*Wave, error) {
 	if raceID == uuid.Nil {
 		return nil, fmt.Errorf("empty raceID")

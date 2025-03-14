@@ -19,7 +19,7 @@ VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (race_id, event_id, id)
 DO UPDATE
 SET split_name=EXCLUDED.split_name, split_type=EXCLUDED. split_type, distance_from_start=EXCLUDED.distance_from_start, time_reader_id=EXCLUDED.time_reader_id, min_time=EXCLUDED.min_time, max_time=EXCLUDED.max_time, min_lap_time=EXCLUDED.min_lap_time
-RETURNING id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time
+RETURNING id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time, previous_lap_split_id
 `
 
 type AddOrUpdateSplitParams struct {
@@ -30,9 +30,9 @@ type AddOrUpdateSplitParams struct {
 	SplitType         TpType
 	DistanceFromStart int32
 	TimeReaderID      uuid.UUID
-	MinTime           pgtype.Int8
-	MaxTime           pgtype.Int8
-	MinLapTime        pgtype.Int8
+	MinTime           pgtype.Interval
+	MaxTime           pgtype.Interval
+	MinLapTime        pgtype.Interval
 }
 
 func (q *Queries) AddOrUpdateSplit(ctx context.Context, arg AddOrUpdateSplitParams) (Split, error) {
@@ -60,6 +60,7 @@ func (q *Queries) AddOrUpdateSplit(ctx context.Context, arg AddOrUpdateSplitPara
 		&i.MinTime,
 		&i.MaxTime,
 		&i.MinLapTime,
+		&i.PreviousLapSplitID,
 	)
 	return i, err
 }
@@ -74,15 +75,15 @@ func (q *Queries) DeleteSplitByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const getAllSplitsForEvent = `-- name: GetAllSplitsForEvent :many
-SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time
+const getSplitsForEvent = `-- name: GetSplitsForEvent :many
+SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time, previous_lap_split_id
 FROM splits
 WHERE event_id=$1
 ORDER BY distance_from_start ASC
 `
 
-func (q *Queries) GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]Split, error) {
-	rows, err := q.db.Query(ctx, getAllSplitsForEvent, eventID)
+func (q *Queries) GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]Split, error) {
+	rows, err := q.db.Query(ctx, getSplitsForEvent, eventID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +102,7 @@ func (q *Queries) GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) (
 			&i.MinTime,
 			&i.MaxTime,
 			&i.MinLapTime,
+			&i.PreviousLapSplitID,
 		); err != nil {
 			return nil, err
 		}
@@ -112,22 +114,35 @@ func (q *Queries) GetAllSplitsForEvent(ctx context.Context, eventID uuid.UUID) (
 	return items, nil
 }
 
-const getAllSplitsForRace = `-- name: GetAllSplitsForRace :many
+const getSplitsForRace = `-- name: GetSplitsForRace :many
 SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time
 FROM splits
 WHERE race_id=$1
 ORDER BY distance_from_start ASC
 `
 
-func (q *Queries) GetAllSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]Split, error) {
-	rows, err := q.db.Query(ctx, getAllSplitsForRace, raceID)
+type GetSplitsForRaceRow struct {
+	ID                uuid.UUID
+	RaceID            uuid.UUID
+	EventID           uuid.UUID
+	SplitName         string
+	SplitType         TpType
+	DistanceFromStart int32
+	TimeReaderID      uuid.UUID
+	MinTime           pgtype.Interval
+	MaxTime           pgtype.Interval
+	MinLapTime        pgtype.Interval
+}
+
+func (q *Queries) GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]GetSplitsForRaceRow, error) {
+	rows, err := q.db.Query(ctx, getSplitsForRace, raceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Split
+	var items []GetSplitsForRaceRow
 	for rows.Next() {
-		var i Split
+		var i GetSplitsForRaceRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.RaceID,

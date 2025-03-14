@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/pkg/logger"
@@ -18,7 +19,11 @@ type RaceConfigurator interface {
 	SaveRaceConfig(ctx context.Context, rc *entity.RaceConfig) error
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
 	CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error)
+	DeleteRace(ctx context.Context, raceID string) error
 	GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error)
+	GetWavesForRace(ctx context.Context, raceID string) ([]*entity.Wave, error)
+	StartWave(ctx context.Context, raceID string, startInfo entity.WaveStart) (time.Time, bool, error)
+	GetEventIDsWithWaveStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type RaceRepo interface {
@@ -26,6 +31,11 @@ type RaceRepo interface {
 	GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceConfig, error)
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
 	SaveRaceInfo(ctx context.Context, race *entity.Race) error
+	SaveWave(ctx context.Context, wave *entity.Wave) error
+	DeleteRace(ctx context.Context, raceID uuid.UUID) error
+	GetWavesForRace(ctx context.Context, raceID uuid.UUID) ([]*entity.Wave, error)
+	GetWaveByID(ctx context.Context, waveID uuid.UUID) (*entity.Wave, error)
+	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type RaceService struct {
@@ -44,6 +54,10 @@ func NewRaceService(logger *logger.Logger, rc *RaceCache, repo RaceRepo) *RaceSe
 
 func (rs RaceService) GetRaces(ctx context.Context) ([]*entity.Race, error) {
 	return rs.repo.GetRaces(ctx)
+}
+
+func (rs RaceService) GetEventIDsWithWaveStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error) {
+	return rs.repo.GetEventIDsWithWavesStarted(ctx, raceID)
 }
 
 func (rs RaceService) CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error) {
@@ -85,4 +99,52 @@ func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *entity.RaceConfig)
 	rs.raceCache.UpdateWith(rc)
 	rs.log.Info("race cache updated")
 	return nil
+}
+
+func (rs RaceService) DeleteRace(ctx context.Context, raceID string) error {
+	id, err := uuid.Parse(raceID)
+	if err != nil {
+		return fmt.Errorf("error parsing raceID")
+	}
+	err = rs.repo.DeleteRace(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error deleting race: %w", err)
+	}
+	return nil
+}
+
+func (rs RaceService) GetWavesForRace(ctx context.Context, raceID string) ([]*entity.Wave, error) {
+	id := uuid.MustParse(raceID)
+	waves, err := rs.repo.GetWavesForRace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if waves == nil {
+		return nil, nil
+	}
+	return waves, nil
+}
+
+func (rs RaceService) StartWave(ctx context.Context, raceID string, startInfo entity.WaveStart) (time.Time, bool, error) {
+	w, err := rs.repo.GetWaveByID(ctx, startInfo.WaveID)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	if w == nil {
+		return time.Time{}, false, nil
+	}
+
+	if startInfo.StartTime.IsZero() {
+		w.StartTime = time.Now()
+	} else {
+		w.StartTime = startInfo.StartTime
+	}
+	w.IsLaunched = true
+
+	err = rs.repo.SaveWave(ctx, w)
+	if err != nil {
+		return time.Time{}, true, fmt.Errorf("error saving wave: %w", err)
+	}
+
+	return w.StartTime, true, nil
 }

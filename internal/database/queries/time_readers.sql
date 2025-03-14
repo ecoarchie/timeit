@@ -1,4 +1,4 @@
--- name: GetAllTimeReadersForRace :many
+-- name: GetTimeReadersForRace :many
 SELECT id, race_id, reader_name
 FROM time_readers
 WHERE race_id=$1;

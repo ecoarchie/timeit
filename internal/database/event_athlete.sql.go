@@ -16,6 +16,9 @@ const addEventAthlete = `-- name: AddEventAthlete :one
 INSERT INTO event_athlete
 (race_id, event_id, athlete_id, wave_id, category_id, bib)
 VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (race_id, event_id, athlete_id)
+DO UPDATE
+SET event_id=EXCLUDED.event_id, wave_id=EXCLUDED.wave_id, category_id=EXCLUDED.category_id, bib=EXCLUDED.bib 
 RETURNING race_id, event_id, athlete_id, wave_id, category_id, bib
 `
 
@@ -25,7 +28,7 @@ type AddEventAthleteParams struct {
 	AthleteID  uuid.UUID
 	WaveID     uuid.UUID
 	CategoryID uuid.NullUUID
-	Bib        pgtype.Int4
+	Bib        int32
 }
 
 func (q *Queries) AddEventAthlete(ctx context.Context, arg AddEventAthleteParams) (EventAthlete, error) {
@@ -67,4 +70,75 @@ func (q *Queries) GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (Eve
 		&i.Bib,
 	)
 	return i, err
+}
+
+const getEventAthleteRecords = `-- name: GetEventAthleteRecords :many
+select 
+	ea.race_id,
+	ea.event_id,
+	ea.wave_id,
+	ea.athlete_id,
+	ea.bib,
+	cb.chip,
+	w.start_time as wave_start,
+	(select array_agg(rr.tod order by rr.tod)::timestamp[]
+	from reader_records rr
+	where rr.race_id = ea.race_id and rr.chip = cb.chip and rr.can_use is true) as records,
+	(select array_agg(tr.id order by rr.tod)::uuid[]
+	from reader_records rr
+	join time_readers tr on tr.reader_name = rr.reader_name and tr.race_id = rr.race_id
+	where rr.race_id = ea.race_id and rr.chip = cb.chip and rr.can_use is true) as reader_ids
+from event_athlete ea
+join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
+join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
+where ea.race_id = $1 
+	and ea.event_id = $2 
+	and w.is_launched is true
+`
+
+type GetEventAthleteRecordsParams struct {
+	RaceID  uuid.UUID
+	EventID uuid.UUID
+}
+
+type GetEventAthleteRecordsRow struct {
+	RaceID    uuid.UUID
+	EventID   uuid.UUID
+	WaveID    uuid.UUID
+	AthleteID uuid.UUID
+	Bib       int32
+	Chip      int32
+	WaveStart pgtype.Timestamp
+	Records   []pgtype.Timestamp
+	ReaderIds []uuid.UUID
+}
+
+func (q *Queries) GetEventAthleteRecords(ctx context.Context, arg GetEventAthleteRecordsParams) ([]GetEventAthleteRecordsRow, error) {
+	rows, err := q.db.Query(ctx, getEventAthleteRecords, arg.RaceID, arg.EventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEventAthleteRecordsRow
+	for rows.Next() {
+		var i GetEventAthleteRecordsRow
+		if err := rows.Scan(
+			&i.RaceID,
+			&i.EventID,
+			&i.WaveID,
+			&i.AthleteID,
+			&i.Bib,
+			&i.Chip,
+			&i.WaveStart,
+			&i.Records,
+			&i.ReaderIds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

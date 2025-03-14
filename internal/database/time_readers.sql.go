@@ -43,14 +43,14 @@ func (q *Queries) DeleteTimeReaderByID(ctx context.Context, id uuid.UUID) error 
 	return err
 }
 
-const getAllTimeReadersForRace = `-- name: GetAllTimeReadersForRace :many
+const getTimeReadersForRace = `-- name: GetTimeReadersForRace :many
 SELECT id, race_id, reader_name
 FROM time_readers
 WHERE race_id=$1
 `
 
-func (q *Queries) GetAllTimeReadersForRace(ctx context.Context, raceID uuid.UUID) ([]TimeReader, error) {
-	rows, err := q.db.Query(ctx, getAllTimeReadersForRace, raceID)
+func (q *Queries) GetTimeReadersForRace(ctx context.Context, raceID uuid.UUID) ([]TimeReader, error) {
+	rows, err := q.db.Query(ctx, getTimeReadersForRace, raceID)
 	if err != nil {
 		return nil, err
 	}

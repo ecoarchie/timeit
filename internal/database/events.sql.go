@@ -58,15 +58,61 @@ func (q *Queries) DeleteEvent(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const getAllEventsForRace = `-- name: GetAllEventsForRace :many
+const getEventByID = `-- name: GetEventByID :one
+SELECT id, race_id, event_name, distance_in_meters, event_date
+FROM events
+WHERE id=$1
+`
+
+func (q *Queries) GetEventByID(ctx context.Context, id uuid.UUID) (Event, error) {
+	row := q.db.QueryRow(ctx, getEventByID, id)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.RaceID,
+		&i.EventName,
+		&i.DistanceInMeters,
+		&i.EventDate,
+	)
+	return i, err
+}
+
+const getEventIDsWithWavesStarted = `-- name: GetEventIDsWithWavesStarted :many
+select distinct e.id
+from events e
+join waves w on w.event_id = e.id
+where e.race_id = $1 and w.is_launched is true
+`
+
+func (q *Queries) GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, getEventIDsWithWavesStarted, raceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventsForRace = `-- name: GetEventsForRace :many
 SELECT id, race_id, event_name, distance_in_meters, event_date
 FROM events
 WHERE race_id=$1
 ORDER BY event_date ASC
 `
 
-func (q *Queries) GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]Event, error) {
-	rows, err := q.db.Query(ctx, getAllEventsForRace, raceID)
+func (q *Queries) GetEventsForRace(ctx context.Context, raceID uuid.UUID) ([]Event, error) {
+	rows, err := q.db.Query(ctx, getEventsForRace, raceID)
 	if err != nil {
 		return nil, err
 	}
@@ -89,23 +135,4 @@ func (q *Queries) GetAllEventsForRace(ctx context.Context, raceID uuid.UUID) ([]
 		return nil, err
 	}
 	return items, nil
-}
-
-const getEventByID = `-- name: GetEventByID :one
-SELECT id, race_id, event_name, distance_in_meters, event_date
-FROM events
-WHERE id=$1
-`
-
-func (q *Queries) GetEventByID(ctx context.Context, id uuid.UUID) (Event, error) {
-	row := q.db.QueryRow(ctx, getEventByID, id)
-	var i Event
-	err := row.Scan(
-		&i.ID,
-		&i.RaceID,
-		&i.EventName,
-		&i.DistanceInMeters,
-		&i.EventDate,
-	)
-	return i, err
 }

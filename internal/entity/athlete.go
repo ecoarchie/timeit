@@ -24,6 +24,7 @@ type Athlete struct {
 }
 
 type AthleteCreateRequest struct {
+	ID          uuid.UUID      `json:"athlete_id"`
 	RaceID      uuid.UUID      `json:"race_id"`
 	EventID     uuid.UUID      `json:"event_id"`
 	WaveID      uuid.UUID      `json:"wave_id"`
@@ -87,7 +88,12 @@ func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 		return nil, fmt.Errorf("athlete's birth date is incorrect")
 	}
 
-	id := uuid.New()
+	var id uuid.UUID
+	if req.ID == uuid.Nil {
+		id = uuid.New()
+	} else {
+		id = req.ID
+	}
 	return &Athlete{
 		ID:          id,
 		RaceID:      req.RaceID,

@@ -118,8 +118,8 @@ type AthleteSplit struct {
 	SplitID   uuid.UUID
 	AthleteID uuid.UUID
 	Tod       pgtype.Timestamp
-	GunTime   int64
-	NetTime   int64
+	GunTime   pgtype.Interval
+	NetTime   pgtype.Interval
 }
 
 type Category struct {
@@ -155,7 +155,7 @@ type EventAthlete struct {
 	AthleteID  uuid.UUID
 	WaveID     uuid.UUID
 	CategoryID uuid.NullUUID
-	Bib        pgtype.Int4
+	Bib        int32
 }
 
 type Race struct {
@@ -174,16 +174,17 @@ type ReaderRecord struct {
 }
 
 type Split struct {
-	ID                uuid.UUID
-	RaceID            uuid.UUID
-	EventID           uuid.UUID
-	SplitName         string
-	SplitType         TpType
-	DistanceFromStart int32
-	TimeReaderID      uuid.UUID
-	MinTime           pgtype.Int8
-	MaxTime           pgtype.Int8
-	MinLapTime        pgtype.Int8
+	ID                 uuid.UUID
+	RaceID             uuid.UUID
+	EventID            uuid.UUID
+	SplitName          string
+	SplitType          TpType
+	DistanceFromStart  int32
+	TimeReaderID       uuid.UUID
+	MinTime            pgtype.Interval
+	MaxTime            pgtype.Interval
+	MinLapTime         pgtype.Interval
+	PreviousLapSplitID uuid.NullUUID
 }
 
 type TimeReader struct {

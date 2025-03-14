@@ -15,6 +15,9 @@ const addChipBib = `-- name: AddChipBib :one
 INSERT INTO chip_bib
 (race_id, event_id, chip, bib)
 VALUES ($1, $2, $3, $4)
+ON CONFLICT (race_id, event_id, chip, bib)
+DO UPDATE
+SET event_id=EXCLUDED.event_id, chip=EXCLUDED.chip, bib=EXCLUDED.bib
 RETURNING race_id, event_id, chip, bib
 `
 

@@ -89,9 +89,10 @@ CREATE TABLE splits (
   split_type tp_type NOT NULL,
   distance_from_start INTEGER NOT NULL,
   time_reader_id UUID NOT NULL,
-  min_time BIGINT DEFAULT 0,
-  max_time BIGINT DEFAULT 0,
-  min_lap_time BIGINT DEFAULT 0,
+  min_time INTERVAL DEFAULT '0 seconds',
+  max_time INTERVAL DEFAULT '0 seconds',
+  min_lap_time INTERVAL DEFAULT '0 seconds',
+  previous_lap_split_id UUID,
   PRIMARY KEY (race_id, event_id, id),
   FOREIGN KEY (race_id, event_id) REFERENCES events (race_id, id) ON DELETE CASCADE,
   FOREIGN KEY (time_reader_id) REFERENCES time_readers(id) ON DELETE CASCADE,
@@ -122,7 +123,7 @@ CREATE TABLE event_athlete (
   athlete_id UUID NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
   wave_id UUID NOT NULL,
   category_id UUID,
-  bib INTEGER,
+  bib INTEGER NOT NULL,
   PRIMARY KEY (race_id, event_id, athlete_id),
   FOREIGN KEY (race_id) REFERENCES races (id) ON DELETE CASCADE
 );
@@ -143,8 +144,8 @@ CREATE TABLE athlete_split (
   split_id UUID NOT NULL,
   athlete_id UUID NOT NULL,
   tod TIMESTAMP NOT NULL,
-  gun_time BIGINT NOT NULL,
-  net_time BIGINT NOT NULL,
+  gun_time INTERVAL NOT NULL,
+  net_time INTERVAL NOT NULL,
   PRIMARY KEY (race_id, event_id, split_id, athlete_id),
   FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE 
 );

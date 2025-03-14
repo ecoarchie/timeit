@@ -1,0 +1,207 @@
+{
+    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+    "race_name": "Spring Marathon 2025",
+    "timezone": "Europe/Moscow",
+    "time_readers": [
+        {
+            "time_reader_id": "019539be-bfb7-7c86-ba11-e3f7d851f02e",
+            "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+            "reader_name": "START"
+        },
+        {
+            "time_reader_id": "019539bf-2604-7049-8327-f6894875394c",
+            "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+            "reader_name": "CHECKPOINT-1"
+        },
+        {
+            "time_reader_id": "01953a46-a276-78b6-a9b0-1366f7cd1d70",
+            "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+            "reader_name": "CHECKPOINT-2"
+        },
+        {
+            "time_reader_id": "019539bf-72f0-796c-ad94-67e8ea8b1a48",
+            "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+            "reader_name": "FINISH"
+        }
+    ],
+    "events": [
+        {
+            "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+            "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+            "event_name": "Marathon",
+            "distance_in_meters": 42195,
+            "event_date": "2025-04-15T09:00:00Z",
+            "splits": [
+                {
+                    "split_id": "ffab0186-bb85-4a56-b779-c18b755f5242",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "split_name": "START",
+                    "split_type": "start",
+                    "distance_from_start": 0,
+                    "time_reader_id": "019539be-bfb7-7c86-ba11-e3f7d851f02e",
+                    "min_time_sec": 0,
+                    "max_time_sec": 0,
+                    "min_lap_time_sec": 0
+                },
+                {
+                    "split_id": "01953a19-f8dc-7566-ba7d-1576de4d0eb4",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "split_name": "21 km",
+                    "split_type": "standard",
+                    "distance_from_start": 21000,
+                    "time_reader_id": "019539be-bfb7-7c86-ba11-e3f7d851f02e",
+                    "min_time_sec": 300,
+                    "max_time_sec": 0,
+                    "min_lap_time_sec": 0
+                },
+                {
+                    "split_id": "01953a3d-0a60-790f-ae14-a990ba765783",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "split_name": "35 km",
+                    "split_type": "standard",
+                    "distance_from_start": 35000,
+                    "time_reader_id": "019539bf-2604-7049-8327-f6894875394c",
+                    "min_time_sec": 500,
+                    "max_time_sec": 0,
+                    "min_lap_time_sec": 0
+                },
+                {
+                    "split_id": "c29975c2-36e0-4b7f-b5f7-f25c9a2392d4",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "split_name": "FINISH",
+                    "split_type": "finish",
+                    "distance_from_start": 42190,
+                    "time_reader_id": "019539bf-72f0-796c-ad94-67e8ea8b1a48",
+                    "min_time_sec": 600,
+                    "max_time_sec": 0,
+                    "min_lap_time_sec": 0
+                }
+            ],
+            "waves": [
+                {
+                    "wave_id": "f4c2d3b0-b42f-4c07-87b3-8cb2357e3d8d",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "wave_name": "Elite",
+                    "wave_start_time": "2025-04-15T09:00:00Z",
+                    "is_launched": false
+                },
+                {
+                    "wave_id": "acef7a2f-7d90-4067-b0f9-091e107e9de5",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "wave_name": "Open",
+                    "wave_start_time": "2025-04-15T09:10:00Z",
+                    "is_launched": false
+                }
+            ],
+            "categories": [
+                {
+                    "category_id": "b153a9de-96d8-4e39-94c7-492ed29d59a9",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "category_name": "Men's Open",
+                    "category_gender": "male",
+                    "age_from": 18,
+                    "date_from": "2025-04-15T00:00:00Z",
+                    "age_to": 40,
+                    "date_to": "2025-04-15T00:00:00Z"
+                },
+                {
+                    "category_id": "d19e1d68-e84f-4209-b350-6a2118cf9b52",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "1c8f5420-b2e7-442d-92c2-4cc95a7f9e6b",
+                    "category_name": "Women's Open",
+                    "category_gender": "female",
+                    "age_from": 18,
+                    "date_from": "2025-04-15T00:00:00Z",
+                    "age_to": 35,
+                    "date_to": "2025-04-15T00:00:00Z"
+                }
+            ]
+        },
+        {
+            "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+            "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+            "event_name": "Half Marathon",
+            "distance_in_meters": 21095,
+            "event_date": "2025-04-15T10:10:00Z",
+            "splits": [
+                {
+                    "split_id": "01953a44-8b03-7627-8342-d7032afc0124",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+                    "split_name": "Half marathon start",
+                    "split_type": "start",
+                    "distance_from_start": 0,
+                    "time_reader_id": "019539be-bfb7-7c86-ba11-e3f7d851f02e",
+                    "min_time_sec": 0,
+                    "max_time_sec": 120,
+                    "min_lap_time_sec": 0
+                },
+                {
+                    "split_id": "01953a45-b164-7816-b2b1-3371974e2eba",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+                    "split_name": "10 km",
+                    "split_type": "standard",
+                    "distance_from_start": 10000,
+                    "time_reader_id": "01953a46-a276-78b6-a9b0-1366f7cd1d70",
+                    "min_time_sec": 200,
+                    "max_time_sec": 0,
+                    "min_lap_time_sec": 0
+                },
+                {
+                    "split_id": "01953a48-0e4c-7b04-9367-1bd8df940d07",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+                    "split_name": "Half marathon finish",
+                    "split_type": "finish",
+                    "distance_from_start": 21095,
+                    "time_reader_id": "019539bf-72f0-796c-ad94-67e8ea8b1a48",
+                    "min_time_sec": 300,
+                    "max_time_sec": 0,
+                    "min_lap_time_sec": 0
+                }
+            ],
+            "waves": [
+                {
+                    "wave_id": "01953a49-42db-730c-a05d-21ac4ccd7ea9",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+                    "wave_name": "Half marathon All",
+                    "wave_start_time": "2025-04-15T10:10:00Z",
+                    "is_launched": false
+                }
+            ],
+            "categories": [
+                {
+                    "category_id": "01953a4a-2ada-7463-a7ed-9a7ba45e2041",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+                    "category_name": "Men's half marathon",
+                    "category_gender": "male",
+                    "age_from": 18,
+                    "date_from": "2025-04-15T00:00:00Z",
+                    "age_to": 99,
+                    "date_to": "2025-04-15T00:00:00Z"
+                },
+                {
+                    "category_id": "01953a4a-5276-7f34-9e58-1b16cd6c8b6f",
+                    "race_id": "c3fe741f-6a12-4b93-93f7-8f84d9a50276",
+                    "event_id": "01953a43-ef38-76ab-9091-d2133faf9200",
+                    "category_name": "Women's Half marathon",
+                    "category_gender": "female",
+                    "age_from": 18,
+                    "date_from": "2025-04-15T00:00:00Z",
+                    "age_to": 99,
+                    "date_to": "2025-04-15T00:00:00Z"
+                }
+            ]
+        }
+    ]
+}

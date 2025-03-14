@@ -1,7 +1,10 @@
 package httpv1
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/service"
@@ -28,7 +31,17 @@ func newAthletesResultsRoutes(logger *logger.Logger, service service.AthleteResu
 	r.Post("/csv/{file_token}", rr.createBulkFromCSV)
 	r.Delete("/{athlete_id}", rr.deleteAthleteByID)
 	r.Delete("/", rr.deleteAthletesForRace)
+	r.Get("/results", rr.getResults)
 	return r
+}
+
+func (p athletesResultsRoutes) getResults(w http.ResponseWriter, r *http.Request) {
+	rID := chi.URLParam(r, "race_id")
+	raceID, _ := uuid.Parse(rID)
+	err := p.service.RecalculateAthleteResult(context.Background(), raceID)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +150,7 @@ func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.
 	for _, a := range athletReqs {
 		_, err := p.service.CreateAthlete(r.Context(), a)
 		if err != nil {
-			p.logger.Error("error create athlete from csv: ", err)
+			p.logger.Error("error create athlete with bib from csv: ", strconv.Itoa(a.Bib), err)
 		}
 	}
 }

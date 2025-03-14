@@ -41,7 +41,7 @@ func Run(cfg *config.Config) {
 	athleteService := service.NewAthleteService(logger, athleteRepo, raceCache)
 	resultsService := service.NewResultsService(athleteRepo)
 
-	pRes := service.NewAthleteResultsService(athleteService, resultsService)
+	pRes := service.NewAthleteResultsService(raceService, athleteService, resultsService)
 
 	// Routers
 	logger.Info("Creating routers")
