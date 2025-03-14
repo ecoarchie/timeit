@@ -29,6 +29,7 @@ type ParticipantQuery interface {
 	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
 	GetEventAthleteRecords(ctx context.Context, arg database.GetEventAthleteRecordsParams) ([]database.GetEventAthleteRecordsRow, error)
 	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
+	CreateAthleteSplits(ctx context.Context, arg []database.CreateAthleteSplitsParams) (int64, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -244,6 +245,15 @@ func (ar *AthleteRepoPG) DeleteAthlete(ctx context.Context, a *entity.Athlete) e
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (ar *AthleteRepoPG) SaveAthleteSplits(ctx context.Context, as []database.CreateAthleteSplitsParams) error {
+	r, err := ar.q.CreateAthleteSplits(ctx, as)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Create athlete splits result: %d\n", r)
+	return nil
 }
 
 func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsRow, []*entity.Split, error) {

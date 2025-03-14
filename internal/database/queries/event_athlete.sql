@@ -34,3 +34,22 @@ join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb
 where ea.race_id = $1 
 	and ea.event_id = $2 
 	and w.is_launched is true;
+
+-- name: GetEventAthleteRecordsJSON :many
+select 
+	ea.race_id,
+	ea.event_id,
+	ea.wave_id,
+	ea.athlete_id,
+	ea.bib,
+	cb.chip,
+	w.start_time as wave_start,
+	(select json_agg(json_build_object('tod', rr.tod, 'reader', tr.id)) from reader_records rr 
+	join time_readers tr on tr.reader_name = rr.reader_name and tr.race_id = rr.race_id
+	where rr.race_id = ea.race_id and rr.chip = cb.chip and rr.can_use is true) as j_recs
+from event_athlete ea
+join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
+join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
+where ea.race_id = $1
+	and ea.event_id = $2
+	and w.is_launched is true;

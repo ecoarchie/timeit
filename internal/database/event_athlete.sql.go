@@ -142,3 +142,68 @@ func (q *Queries) GetEventAthleteRecords(ctx context.Context, arg GetEventAthlet
 	}
 	return items, nil
 }
+
+const getEventAthleteRecordsJSON = `-- name: GetEventAthleteRecordsJSON :many
+select 
+	ea.race_id,
+	ea.event_id,
+	ea.wave_id,
+	ea.athlete_id,
+	ea.bib,
+	cb.chip,
+	w.start_time as wave_start,
+	(select json_agg(json_build_object('tod', rr.tod, 'reader', tr.id)) from reader_records rr 
+	join time_readers tr on tr.reader_name = rr.reader_name and tr.race_id = rr.race_id
+	where rr.race_id = ea.race_id and rr.chip = cb.chip and rr.can_use is true) as j_recs
+from event_athlete ea
+join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
+join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
+where ea.race_id = $1
+	and ea.event_id = $2
+	and w.is_launched is true
+`
+
+type GetEventAthleteRecordsJSONParams struct {
+	RaceID  uuid.UUID
+	EventID uuid.UUID
+}
+
+type GetEventAthleteRecordsJSONRow struct {
+	RaceID    uuid.UUID
+	EventID   uuid.UUID
+	WaveID    uuid.UUID
+	AthleteID uuid.UUID
+	Bib       int32
+	Chip      int32
+	WaveStart pgtype.Timestamp
+	JRecs     []byte
+}
+
+func (q *Queries) GetEventAthleteRecordsJSON(ctx context.Context, arg GetEventAthleteRecordsJSONParams) ([]GetEventAthleteRecordsJSONRow, error) {
+	rows, err := q.db.Query(ctx, getEventAthleteRecordsJSON, arg.RaceID, arg.EventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEventAthleteRecordsJSONRow
+	for rows.Next() {
+		var i GetEventAthleteRecordsJSONRow
+		if err := rows.Scan(
+			&i.RaceID,
+			&i.EventID,
+			&i.WaveID,
+			&i.AthleteID,
+			&i.Bib,
+			&i.Chip,
+			&i.WaveStart,
+			&i.JRecs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

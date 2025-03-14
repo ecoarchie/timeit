@@ -8,10 +8,11 @@ import (
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ResultsManager interface {
-	GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([][]*entity.AthleteSplit, error)
+	GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error)
 }
 
 type ResultsService struct {
@@ -30,7 +31,7 @@ func (rs ResultsService) ResultForAthlete(id uuid.UUID) *entity.AthleteSplit {
 }
 
 // TODO
-func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([][]*entity.AthleteSplit, error) {
+func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error) {
 	recs, splits, err := rs.AthleteRepo.GetRecordsAndSplitsForEventAthlete(ctx, raceID, eventID)
 	if err != nil {
 		return nil, err
@@ -39,7 +40,7 @@ func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UU
 		fmt.Printf("splid ID: %v, name: %s, prevLap: %v, min_time: %v, max_time: %v, min_lap_time: %v\n", s.ID, s.Name, s.PreviousLapSplitID, s.MinTime, s.MaxTime, s.MinLapTime)
 	}
 
-	allRecords := [][]*entity.AthleteSplit{}
+	allRecords := []*entity.AthleteSplit{}
 	splitMap := arrangeSplitsByReaderName(splits)
 	for _, r := range recs {
 		if len(r.Records) == 0 {
@@ -49,7 +50,37 @@ func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UU
 		if err != nil {
 			return nil, err
 		}
-		allRecords = append(allRecords, res)
+		allRecords = append(allRecords, res...)
+	}
+	saveAthleteSplitsParams := []database.CreateAthleteSplitsParams{}
+	for _, ar := range allRecords {
+		if ar == nil {
+			continue
+		}
+		saveAthleteSplitsParams = append(saveAthleteSplitsParams, database.CreateAthleteSplitsParams{
+			RaceID:    ar.RaceID,
+			EventID:   ar.EventID,
+			SplitID:   ar.SplitID,
+			AthleteID: ar.AthleteID,
+			Tod: pgtype.Timestamp{
+				Time:             ar.TOD,
+				InfinityModifier: 0,
+				Valid:            true,
+			},
+			GunTime: pgtype.Interval{
+				Microseconds: ar.GunTime.Microseconds(),
+				Valid:        true,
+			},
+			NetTime: pgtype.Interval{
+				Microseconds: ar.NetTime.Microseconds(),
+				Valid:        true,
+			},
+		})
+	}
+	err = rs.AthleteRepo.SaveAthleteSplits(ctx, saveAthleteSplitsParams)
+	if err != nil {
+		fmt.Println("Error inserting athlete splits", err)
+		return nil, err
 	}
 	return allRecords, nil
 }
@@ -88,10 +119,14 @@ func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*e
 
 			// for type 'start' existing results must be overwritten, for 'standard' and 'finish' existing must be kept unchanged
 			if !exist || s.Type == entity.SplitTypeStart {
-				// FIXME add checking if start type split is not configured at all
+				// FIXME add checking if start type split is not configured or missed at all
 				var netTime time.Duration
 				if s.Type != entity.SplitTypeStart {
-					netTime = recTOD.Time.Sub(singleAthleteRecords[0].TOD)
+					if singleAthleteRecords[0] != nil {
+						netTime = recTOD.Time.Sub(singleAthleteRecords[0].TOD)
+					} else {
+						netTime = recTOD.Time.Sub(r.WaveStart.Time)
+					}
 				}
 				res := &entity.AthleteSplit{
 					RaceID:    s.RaceID,
