@@ -14,9 +14,6 @@ WHERE athlete_id=$1;
 
 -- name: GetEventAthleteRecords :many
 select 
-	ea.race_id,
-	ea.event_id,
-	ea.wave_id,
 	ea.athlete_id,
 	ea.bib,
 	cb.chip,

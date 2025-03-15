@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -39,11 +38,11 @@ func (prs *AthleteResultsService) RecalculateAthleteResult(ctx context.Context, 
 	}
 	// FIXME
 	for _, id := range IDs {
-		res, err := prs.ResultsManager.GetResults(ctx, raceID, id)
+		_, err := prs.ResultsManager.GetResults(ctx, raceID, id)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Res: ", res)
+		// fmt.Println("Res: ", res)
 	}
 	return nil
 }

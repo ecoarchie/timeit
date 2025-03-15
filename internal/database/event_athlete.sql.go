@@ -74,9 +74,6 @@ func (q *Queries) GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (Eve
 
 const getEventAthleteRecords = `-- name: GetEventAthleteRecords :many
 select 
-	ea.race_id,
-	ea.event_id,
-	ea.wave_id,
 	ea.athlete_id,
 	ea.bib,
 	cb.chip,
@@ -102,9 +99,6 @@ type GetEventAthleteRecordsParams struct {
 }
 
 type GetEventAthleteRecordsRow struct {
-	RaceID    uuid.UUID
-	EventID   uuid.UUID
-	WaveID    uuid.UUID
 	AthleteID uuid.UUID
 	Bib       int32
 	Chip      int32
@@ -123,9 +117,6 @@ func (q *Queries) GetEventAthleteRecords(ctx context.Context, arg GetEventAthlet
 	for rows.Next() {
 		var i GetEventAthleteRecordsRow
 		if err := rows.Scan(
-			&i.RaceID,
-			&i.EventID,
-			&i.WaveID,
 			&i.AthleteID,
 			&i.Bib,
 			&i.Chip,

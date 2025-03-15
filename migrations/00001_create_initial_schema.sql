@@ -63,7 +63,7 @@ CREATE TABLE reader_records (
 );
 
 -- Performance indexes for reader_records
-CREATE INDEX idx_box_records_chip_reader_name ON reader_records (chip, reader_name);
+CREATE INDEX idx_chip_time ON reader_records (tod, race_id, can_use, reader_name, chip);
 CREATE INDEX idx_box_records_race_chip ON reader_records (race_id, chip);
 
 -- Table: time_readers
