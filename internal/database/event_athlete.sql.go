@@ -77,6 +77,8 @@ select
 	ea.athlete_id,
 	ea.bib,
 	cb.chip,
+	ea.category_id,
+	a.gender,
 	w.start_time as wave_start,
 	(select array_agg(rr.tod order by rr.tod)::timestamp[]
 	from reader_records rr
@@ -85,12 +87,13 @@ select
 	from reader_records rr
 	join time_readers tr on tr.reader_name = rr.reader_name and tr.race_id = rr.race_id
 	where rr.race_id = ea.race_id and rr.chip = cb.chip and rr.can_use is true) as reader_ids
-from event_athlete ea
-join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
-join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
-where ea.race_id = $1 
-	and ea.event_id = $2 
-	and w.is_launched is true
+	from event_athlete ea
+	join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
+	join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
+	join athletes a on a.id = ea.athlete_id and a.race_id = ea.race_id
+	where ea.race_id = $1 
+		and ea.event_id = $2 
+		and w.is_launched is true
 `
 
 type GetEventAthleteRecordsParams struct {
@@ -99,12 +102,14 @@ type GetEventAthleteRecordsParams struct {
 }
 
 type GetEventAthleteRecordsRow struct {
-	AthleteID uuid.UUID
-	Bib       int32
-	Chip      int32
-	WaveStart pgtype.Timestamp
-	Records   []pgtype.Timestamp
-	ReaderIds []uuid.UUID
+	AthleteID  uuid.UUID
+	Bib        int32
+	Chip       int32
+	CategoryID uuid.NullUUID
+	Gender     CategoryGender
+	WaveStart  pgtype.Timestamp
+	Records    []pgtype.Timestamp
+	ReaderIds  []uuid.UUID
 }
 
 func (q *Queries) GetEventAthleteRecords(ctx context.Context, arg GetEventAthleteRecordsParams) ([]GetEventAthleteRecordsRow, error) {
@@ -120,6 +125,8 @@ func (q *Queries) GetEventAthleteRecords(ctx context.Context, arg GetEventAthlet
 			&i.AthleteID,
 			&i.Bib,
 			&i.Chip,
+			&i.CategoryID,
+			&i.Gender,
 			&i.WaveStart,
 			&i.Records,
 			&i.ReaderIds,

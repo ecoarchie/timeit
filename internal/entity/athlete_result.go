@@ -7,13 +7,21 @@ import (
 )
 
 type AthleteSplit struct {
-	RaceID    uuid.UUID
-	EventID   uuid.UUID
-	AthleteID uuid.UUID
-	SplitID   uuid.UUID     `json:"split_id"`
-	TOD       time.Time     `json:"tod"`
-	GunTime   time.Duration `json:"gun_time"`
-	NetTime   time.Duration `json:"net_time"`
+	RaceID          uuid.UUID
+	EventID         uuid.UUID
+	AthleteID       uuid.UUID
+	SplitID         uuid.UUID     `json:"split_id"`
+	TOD             time.Time     `json:"tod"`
+	GunTime         time.Duration `json:"gun_time"`
+	NetTime         time.Duration `json:"net_time"`
+	Gender          CategoryGender
+	CategoryID      uuid.NullUUID
+	GunRankOverall  int
+	GunRankGender   int
+	GunRankCategory int
+	NetRankOverall  int
+	NetRankGender   int
+	NetRankCategory int
 }
 
 // func NewAthleteResults(p *Athlete) *AthleteResult {

@@ -1,8 +1,10 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
@@ -12,7 +14,8 @@ import (
 )
 
 type ResultsManager interface {
-	GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error)
+	GetResultsForEvent(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error)
+	CalculateRanks(ctx context.Context, eventResults []*entity.AthleteSplit) ([]*entity.AthleteSplit, error)
 }
 
 type ResultsService struct {
@@ -30,8 +33,112 @@ func (rs ResultsService) ResultForAthlete(id uuid.UUID) *entity.AthleteSplit {
 	return nil
 }
 
+func (rs ResultsService) CalculateRanks(ctx context.Context, eventResults []*entity.AthleteSplit) ([]*entity.AthleteSplit, error) {
+	gunCmp := func(a, b *entity.AthleteSplit) int {
+		if a == nil && b == nil {
+			return 0 // Consider nils equal
+		}
+		if a == nil {
+			return -1 // Nil comes first
+		}
+		if b == nil {
+			return 1 // Non-nil comes after nil
+		}
+		n := cmp.Compare(a.GunTime, b.GunTime)
+		return n
+	}
+	netCmp := func(a, b *entity.AthleteSplit) int {
+		if a == nil && b == nil {
+			return 0 // Consider nils equal
+		}
+		if a == nil {
+			return -1 // Nil comes first
+		}
+		if b == nil {
+			return 1 // Non-nil comes after nil
+		}
+		return cmp.Compare(a.NetTime, b.NetTime)
+	}
+
+	start := time.Now()
+	calculateRanks(eventResults, gunCmp, GUN)
+	calculateRanks(eventResults, netCmp, NET)
+	fmt.Printf("RANKS calculation for event took - %v\n", time.Since(start))
+	for i, r := range eventResults {
+		fmt.Printf("%d. res = %+v\n", i, r)
+	}
+
+	return eventResults, nil
+}
+
+const (
+	GUN = "gun"
+	NET = "net"
+)
+
+func calculateRanks(aSplits []*entity.AthleteSplit, compf func(a, b *entity.AthleteSplit) int, time string) {
+	resGroupRank := make(map[string]int, len(aSplits))
+	slices.SortFunc(aSplits, compf)
+	for _, s := range aSplits {
+		if s == nil {
+			continue
+		}
+		oGroup := fmt.Sprintf("%s-%s", "overall", s.SplitID.String())
+		cGroup := fmt.Sprintf("%s-%s", s.CategoryID.UUID.String(), s.SplitID.String())
+		gGroup := fmt.Sprintf("%s-%s", s.Gender, s.SplitID.String())
+
+		resGroupRank[oGroup]++
+		if s.CategoryID.Valid {
+			resGroupRank[cGroup]++
+		}
+		resGroupRank[gGroup]++
+
+		switch time {
+		case GUN:
+			s.GunRankOverall = resGroupRank[oGroup]
+			if s.CategoryID.Valid {
+				s.GunRankCategory = resGroupRank[cGroup]
+			}
+			s.GunRankGender = resGroupRank[gGroup]
+		case NET:
+			s.NetRankOverall = resGroupRank[oGroup]
+			if s.CategoryID.Valid {
+				s.NetRankCategory = resGroupRank[cGroup]
+			}
+			s.NetRankGender = resGroupRank[gGroup]
+		}
+	}
+}
+
+func calculateNetRanks(splits []*entity.AthleteSplit, compf func(a, b *entity.AthleteSplit) int) {
+	resGroupRank := make(map[string]int)
+	slices.SortFunc(splits, compf)
+	for _, s := range splits {
+		if s == nil {
+			continue
+		}
+		oGroup := fmt.Sprintf("%s-%s", "overall", s.SplitID.String())
+		cGroup := fmt.Sprintf("%s-%s", s.CategoryID.UUID.String(), s.SplitID.String())
+		gGroup := fmt.Sprintf("%s-%s", s.Gender, s.SplitID.String())
+
+		// calculate rank for overall
+		resGroupRank[oGroup]++
+		s.NetRankOverall = resGroupRank[oGroup]
+
+		// calculate rank for category
+		if s.CategoryID.Valid {
+			resGroupRank[cGroup]++
+			s.NetRankCategory = resGroupRank[cGroup]
+		}
+
+		// calculate rank for gender
+		resGroupRank[gGroup]++
+		s.NetRankGender = resGroupRank[gGroup]
+	}
+}
+
 // TODO
-func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error) {
+func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error) {
 	start := time.Now()
 	recs, splits, err := rs.AthleteRepo.GetRecordsAndSplitsForEventAthlete(ctx, raceID, eventID)
 	if err != nil {
@@ -100,14 +207,6 @@ func (rs ResultsService) GetResults(ctx context.Context, raceID, eventID uuid.UU
 	return allRecords, nil
 }
 
-func arrangeSplitsByReaderName(ss []*entity.Split) map[SplitID]*entity.Split {
-	ssMap := map[SplitID]*entity.Split{}
-	for _, s := range ss {
-		ssMap[s.ID] = s
-	}
-	return ssMap
-}
-
 func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, error) {
 	// create slice for athlete's splits which will be populated further
 	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
@@ -144,13 +243,15 @@ func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*e
 					}
 				}
 				res := &entity.AthleteSplit{
-					RaceID:    s.RaceID,
-					EventID:   s.EventID,
-					AthleteID: r.AthleteID,
-					SplitID:   s.ID,
-					TOD:       recTOD.Time,
-					GunTime:   recTOD.Time.Sub(r.WaveStart.Time),
-					NetTime:   netTime,
+					RaceID:     s.RaceID,
+					EventID:    s.EventID,
+					AthleteID:  r.AthleteID,
+					SplitID:    s.ID,
+					TOD:        recTOD.Time,
+					GunTime:    recTOD.Time.Sub(r.WaveStart.Time),
+					NetTime:    netTime,
+					Gender:     entity.CategoryGender(r.Gender),
+					CategoryID: r.CategoryID,
 				}
 				athleteResultsMap[s.ID] = res
 				singleAthleteRecords[j] = res
@@ -172,12 +273,6 @@ func isValidSplit(waveStart time.Time, tod time.Time, s *entity.Split, prev *ent
 		return false
 	}
 	validMinTime := waveStart.Add(s.MinTime)
-	// var validMaxTime time.Time
-	// if s.MaxTime == 0 {
-	// 	validMaxTime = waveStart.Add(time.Hour * 240) // FIXME replace this magic with const max time
-	// } else {
-	// 	validMaxTime = waveStart.Add(s.MaxTime)
-	// }
 
 	if !(tod.After(validMinTime) || tod.Equal(validMinTime)) {
 		return false
@@ -193,3 +288,11 @@ func isValidSplit(waveStart time.Time, tod time.Time, s *entity.Split, prev *ent
 	// fmt.Printf("Split %s is valid\n\n", s.Name)
 	return true
 }
+
+// func arrangeSplitsByReaderName(ss []*entity.Split) map[SplitID]*entity.Split {
+// 	ssMap := map[SplitID]*entity.Split{}
+// 	for _, s := range ss {
+// 		ssMap[s.ID] = s
+// 	}
+// 	return ssMap
+// }
