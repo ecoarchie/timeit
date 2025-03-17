@@ -10,10 +10,10 @@ type AthleteSplit struct {
 	RaceID          uuid.UUID
 	EventID         uuid.UUID
 	AthleteID       uuid.UUID
-	SplitID         uuid.UUID     `json:"split_id"`
-	TOD             time.Time     `json:"tod"`
-	GunTime         time.Duration `json:"gun_time"`
-	NetTime         time.Duration `json:"net_time"`
+	SplitID         uuid.UUID
+	TOD             time.Time
+	GunTime         Duration
+	NetTime         Duration
 	Gender          CategoryGender
 	CategoryID      uuid.NullUUID
 	GunRankOverall  int

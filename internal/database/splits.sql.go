@@ -8,8 +8,8 @@ package database
 import (
 	"context"
 
+	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addOrUpdateSplit = `-- name: AddOrUpdateSplit :one
@@ -30,9 +30,9 @@ type AddOrUpdateSplitParams struct {
 	SplitType         TpType
 	DistanceFromStart int32
 	TimeReaderID      uuid.UUID
-	MinTime           pgtype.Interval
-	MaxTime           pgtype.Interval
-	MinLapTime        pgtype.Interval
+	MinTime           entity.Duration
+	MaxTime           entity.Duration
+	MinLapTime        entity.Duration
 }
 
 func (q *Queries) AddOrUpdateSplit(ctx context.Context, arg AddOrUpdateSplitParams) (Split, error) {
@@ -129,9 +129,9 @@ type GetSplitsForRaceRow struct {
 	SplitType         TpType
 	DistanceFromStart int32
 	TimeReaderID      uuid.UUID
-	MinTime           pgtype.Interval
-	MaxTime           pgtype.Interval
-	MinLapTime        pgtype.Interval
+	MinTime           entity.Duration
+	MaxTime           entity.Duration
+	MinLapTime        entity.Duration
 }
 
 func (q *Queries) GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]GetSplitsForRaceRow, error) {

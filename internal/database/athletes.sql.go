@@ -18,7 +18,7 @@ INSERT INTO athletes
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (id)
 DO UPDATE
-SET race_id=EXCLUDED.race_id, first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name, gender=EXCLUDED.gender, date_of_birth=EXCLUDED.date_of_birth, phone=EXCLUDED.phone, athlete_comments=EXCLUDED.athlete_comments, updated_at=EXCLUDED.updated_at
+SET first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name, gender=EXCLUDED.gender, date_of_birth=EXCLUDED.date_of_birth, phone=EXCLUDED.phone, athlete_comments=EXCLUDED.athlete_comments, updated_at=EXCLUDED.updated_at
 RETURNING id, race_id, first_name, last_name, gender, date_of_birth, phone, athlete_comments, created_at, updated_at
 `
 

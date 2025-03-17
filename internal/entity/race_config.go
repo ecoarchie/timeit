@@ -21,16 +21,17 @@ type EventConfig struct {
 	Categories []*Category    `json:"categories"`
 }
 type SplitConfig struct {
-	ID                uuid.UUID `json:"split_id"`
-	RaceID            uuid.UUID `json:"race_id"`
-	EventID           uuid.UUID `json:"event_id"`
-	Name              string    `json:"split_name"`
-	Type              SplitType `json:"split_type"`
-	DistanceFromStart int       `json:"distance_from_start"`
-	TimeReaderID      uuid.UUID `json:"time_reader_id"`
-	MinTime           Duration  `json:"min_time_sec"`
-	MaxTime           Duration  `json:"max_time_sec"`
-	MinLapTime        Duration  `json:"min_lap_time_sec"`
+	ID                 uuid.UUID `json:"split_id"`
+	RaceID             uuid.UUID `json:"race_id"`
+	EventID            uuid.UUID `json:"event_id"`
+	Name               string    `json:"split_name"`
+	Type               SplitType `json:"split_type"`
+	DistanceFromStart  int       `json:"distance_from_start"`
+	TimeReaderID       uuid.UUID `json:"time_reader_id"`
+	MinTime            Duration  `json:"min_time_sec"`
+	MaxTime            Duration  `json:"max_time_sec"`
+	MinLapTime         Duration  `json:"min_lap_time_sec"`
+	PreviousLapSplitID uuid.NullUUID
 }
 
 type RaceFormData struct {

@@ -3,14 +3,13 @@ package repo
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
+	"github.com/ecoarchie/timeit/pkg/pgxmapper"
 	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ParticipantQuery interface {
@@ -24,13 +23,12 @@ type ParticipantQuery interface {
 	DeleteChipBib(ctx context.Context, arg database.DeleteChipBibParams) error
 	DeleteChipBibWithEventID(ctx context.Context, arg database.DeleteChipBibWithEventIDParams) error
 	DeleteChipBibWithRaceID(ctx context.Context, raceID uuid.UUID) error
-	// DeleteEventAthlete(ctx context.Context, arg database.DeleteEventAthleteParams) error
 	GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (database.EventAthlete, error)
 	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
 	GetEventAthleteRecords(ctx context.Context, arg database.GetEventAthleteRecordsParams) ([]database.GetEventAthleteRecordsRow, error)
 	GetEventAthleteRecordsC(ctx context.Context, arg database.GetEventAthleteRecordsCParams) ([]database.GetEventAthleteRecordsCRow, error)
 	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
-	CreateAthleteSplits(ctx context.Context, arg []database.CreateAthleteSplitsParams) (int64, error)
+	CreateAthleteSplits(ctx context.Context, arg database.CreateAthleteSplitsParams) error
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -53,14 +51,6 @@ func (ar *AthleteRepoPG) WithTx(tx pgx.Tx) *AthleteRepoPG {
 	}
 }
 
-// func (ar *AthleteRepoPG) WithRollback(ctx context.Context) (pgx.Tx, *AthleteRepoPG, func(ctx context.Context) error, error) {
-// 	tx, err := ar.pool.Begin(ctx)
-// 	if err != nil {
-// 		return nil, nil, nil, err
-// 	}
-// 	return tx, ar.WithTx(tx), tx.Rollback, nil
-// }
-
 func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) error {
 	tx, err := ar.pg.Pool.Begin(ctx)
 	if err != nil {
@@ -69,30 +59,14 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 	defer tx.Rollback(ctx)
 	qtx := ar.WithTx(tx)
 	aParams := database.CreateOrUpdateAthleteParams{
-		ID:     p.ID,
-		RaceID: p.RaceID,
-		FirstName: pgtype.Text{
-			String: p.FirstName,
-			Valid:  true,
-		},
-		LastName: pgtype.Text{
-			String: p.LastName,
-			Valid:  true,
-		},
-		Gender: database.CategoryGender(p.Gender),
-		DateOfBirth: pgtype.Date{
-			Time:             p.DateOfBirth,
-			InfinityModifier: 0,
-			Valid:            true,
-		},
-		Phone: pgtype.Text{
-			String: p.Phone,
-			Valid:  true,
-		},
-		AthleteComments: pgtype.Text{
-			String: p.Comments,
-			Valid:  true,
-		},
+		ID:              p.ID,
+		RaceID:          p.RaceID,
+		FirstName:       pgxmapper.StringToPgxText(p.FirstName),
+		LastName:        pgxmapper.StringToPgxText(p.LastName),
+		Gender:          database.CategoryGender(p.Gender),
+		DateOfBirth:     pgxmapper.TimeToPgxDate(p.DateOfBirth),
+		Phone:           pgxmapper.StringToPgxText(p.Phone),
+		AthleteComments: pgxmapper.StringToPgxText(p.Comments),
 	}
 
 	_, err = qtx.q.CreateOrUpdateAthlete(ctx, aParams)
@@ -128,13 +102,9 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 
 func (ar *AthleteRepoPG) GetCategoryFor(ctx context.Context, p *entity.Athlete) (uuid.NullUUID, bool, error) {
 	params := database.GetCategoryForAthleteParams{
-		EventID: p.EventID,
-		Gender:  database.CategoryGender(p.Gender),
-		DateFrom: pgtype.Timestamp{
-			Time:             p.DateOfBirth,
-			InfinityModifier: 0,
-			Valid:            true,
-		},
+		EventID:  p.EventID,
+		Gender:   database.CategoryGender(p.Gender),
+		DateFrom: pgxmapper.TimeToPgxTimestamp(p.DateOfBirth),
 	}
 
 	c, err := ar.q.GetCategoryForAthlete(ctx, params)
@@ -249,15 +219,17 @@ func (ar *AthleteRepoPG) DeleteAthlete(ctx context.Context, a *entity.Athlete) e
 }
 
 func (ar *AthleteRepoPG) SaveAthleteSplits(ctx context.Context, as []database.CreateAthleteSplitsParams) error {
-	r, err := ar.q.CreateAthleteSplits(ctx, as)
-	if err != nil {
-		return err
+	for _, sp := range as {
+		err := ar.q.CreateAthleteSplits(ctx, sp)
+		if err != nil {
+			fmt.Printf("error creating athleteID split: %s\n", sp.AthleteID)
+			return err
+		}
 	}
-	fmt.Printf("Create athlete splits result: %d\n", r)
 	return nil
 }
 
-func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.Split, error) {
+func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.SplitConfig, error) {
 	ss, err := ar.q.GetSplitsForEvent(ctx, eventID)
 	if err != nil {
 		return nil, nil, err
@@ -272,9 +244,9 @@ func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context,
 		return nil, nil, err
 	}
 
-	splits := []*entity.Split{}
+	splits := []*entity.SplitConfig{}
 	for _, s := range ss {
-		split := &entity.Split{
+		split := &entity.SplitConfig{
 			ID:                 s.ID,
 			RaceID:             s.RaceID,
 			EventID:            s.EventID,
@@ -282,9 +254,9 @@ func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context,
 			Type:               entity.SplitType(s.SplitType),
 			DistanceFromStart:  int(s.DistanceFromStart),
 			TimeReaderID:       s.TimeReaderID,
-			MinTime:            time.Duration(s.MinTime.Microseconds * 1000),
-			MaxTime:            time.Duration(s.MaxTime.Microseconds * 1000),
-			MinLapTime:         time.Duration(s.MinLapTime.Microseconds * 1000),
+			MinTime:            s.MinTime,
+			MaxTime:            s.MaxTime,
+			MinLapTime:         s.MinLapTime,
 			PreviousLapSplitID: s.PreviousLapSplitID,
 		}
 		splits = append(splits, split)

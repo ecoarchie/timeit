@@ -5,14 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
+	"github.com/ecoarchie/timeit/pkg/pgxmapper"
 	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type RaceQuery interface {
@@ -94,11 +93,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 			RaceID:           e.RaceID,
 			EventName:        e.Name,
 			DistanceInMeters: int32(e.DistanceInMeters),
-			EventDate: pgtype.Timestamp{
-				Time:             e.EventDate,
-				InfinityModifier: 0,
-				Valid:            true,
-			},
+			EventDate:        pgxmapper.TimeToPgxTimestamp(e.EventDate),
 		}
 		_, err := qtx.q.AddOrUpdateEvent(ctx, eParams)
 		if err != nil {
@@ -115,24 +110,9 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				SplitType:         database.TpType(tp.Type),
 				DistanceFromStart: int32(tp.DistanceFromStart),
 				TimeReaderID:      tp.TimeReaderID,
-				MinTime: pgtype.Interval{
-					Microseconds: time.Duration(tp.MinTime).Microseconds(),
-					Days:         0,
-					Months:       0,
-					Valid:        true,
-				},
-				MaxTime: pgtype.Interval{
-					Microseconds: time.Duration(tp.MaxTime).Microseconds(),
-					Days:         0,
-					Months:       0,
-					Valid:        true,
-				},
-				MinLapTime: pgtype.Interval{
-					Microseconds: time.Duration(tp.MinLapTime).Microseconds(),
-					Days:         0,
-					Months:       0,
-					Valid:        true,
-				},
+				MinTime:           tp.MinTime,
+				MaxTime:           tp.MaxTime,
+				MinLapTime:        tp.MinLapTime,
 			}
 			_, err := qtx.q.AddOrUpdateSplit(ctx, tpParams)
 			if err != nil {
@@ -143,15 +123,11 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 		// Save waves
 		for _, w := range e.Waves {
 			wParams := database.AddOrUpdateWaveParams{
-				ID:       w.ID,
-				RaceID:   w.RaceID,
-				EventID:  w.EventID,
-				WaveName: w.Name,
-				StartTime: pgtype.Timestamp{
-					Time:             w.StartTime,
-					InfinityModifier: 0,
-					Valid:            true,
-				},
+				ID:         w.ID,
+				RaceID:     w.RaceID,
+				EventID:    w.EventID,
+				WaveName:   w.Name,
+				StartTime:  pgxmapper.TimeToPgxTimestamp(w.StartTime),
 				IsLaunched: w.IsLaunched,
 			}
 			_, err := qtx.q.AddOrUpdateWave(ctx, wParams)
@@ -169,17 +145,9 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 				CategoryName: c.Name,
 				Gender:       database.CategoryGender(c.Gender),
 				AgeFrom:      int32(c.AgeFrom),
-				DateFrom: pgtype.Timestamp{
-					Time:             c.DateFrom,
-					InfinityModifier: 0,
-					Valid:            true,
-				},
-				AgeTo: int32(c.AgeTo),
-				DateTo: pgtype.Timestamp{
-					Time:             c.DateTo,
-					InfinityModifier: 0,
-					Valid:            true,
-				},
+				DateFrom:     pgxmapper.TimeToPgxTimestamp(c.DateFrom),
+				AgeTo:        int32(c.AgeTo),
+				DateTo:       pgxmapper.TimeToPgxTimestamp(c.DateTo),
 			}
 			_, err := qtx.q.AddOrUpdateCategory(ctx, cParams)
 			if err != nil {
@@ -255,9 +223,9 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 				Type:              entity.SplitType(s.SplitType),
 				DistanceFromStart: int(s.DistanceFromStart),
 				TimeReaderID:      s.TimeReaderID,
-				MinTime:           entity.Duration(s.MinTime.Microseconds * 1000),
-				MaxTime:           entity.Duration(s.MaxTime.Microseconds * 1000),
-				MinLapTime:        entity.Duration(s.MinLapTime.Microseconds * 1000),
+				MinTime:           s.MinTime,
+				MaxTime:           s.MaxTime,
+				MinLapTime:        s.MinLapTime,
 			}
 			event.Splits = append(event.Splits, split)
 		}
@@ -387,15 +355,11 @@ func (rr *RaceRepoPG) GetWaveByID(ctx context.Context, waveID uuid.UUID) (*entit
 
 func (rr *RaceRepoPG) SaveWave(ctx context.Context, wave *entity.Wave) error {
 	wParams := database.AddOrUpdateWaveParams{
-		ID:       wave.ID,
-		RaceID:   wave.RaceID,
-		EventID:  wave.EventID,
-		WaveName: wave.Name,
-		StartTime: pgtype.Timestamp{
-			Time:             wave.StartTime,
-			InfinityModifier: 0,
-			Valid:            true,
-		},
+		ID:         wave.ID,
+		RaceID:     wave.RaceID,
+		EventID:    wave.EventID,
+		WaveName:   wave.Name,
+		StartTime:  pgxmapper.TimeToPgxTimestamp(wave.StartTime),
 		IsLaunched: wave.IsLaunched,
 	}
 	_, err := rr.q.AddOrUpdateWave(ctx, wParams)

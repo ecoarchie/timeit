@@ -37,9 +37,15 @@ func newAthletesResultsRoutes(logger *logger.Logger, service service.AthleteResu
 func (p athletesResultsRoutes) getResults(w http.ResponseWriter, r *http.Request) {
 	rID := chi.URLParam(r, "race_id")
 	raceID, _ := uuid.Parse(rID)
-	err := p.service.RecalculateAthleteResult(context.Background(), raceID)
+	res, err := p.service.GetResults(context.Background(), raceID)
 	if err != nil {
 		p.logger.Error("Calculate results: ", "err", err)
+		serverErrorResponse(w, err)
+		return
+	}
+	err = writeJSON(w, http.StatusOK, res, nil)
+	if err != nil {
+		serverErrorResponse(w, err)
 	}
 }
 

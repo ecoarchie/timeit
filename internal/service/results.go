@@ -145,7 +145,7 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 		return nil, err
 	}
 	fmt.Printf("Time for getting records for eventID = %v is %v\n", eventID, time.Since(start))
-	var startSplit *entity.Split
+	var startSplit *entity.SplitConfig
 	for _, s := range splits {
 		fmt.Printf("splid ID: %v, name: %s, prevLap: %v, min_time: %v, max_time: %v, min_lap_time: %v\n", s.ID, s.Name, s.PreviousLapSplitID, s.MinTime, s.MaxTime, s.MinLapTime)
 		if s.Type == entity.SplitTypeStart {
@@ -187,14 +187,8 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 				Time:  ar.TOD,
 				Valid: true,
 			},
-			GunTime: pgtype.Interval{
-				Microseconds: ar.GunTime.Microseconds(),
-				Valid:        true,
-			},
-			NetTime: pgtype.Interval{
-				Microseconds: ar.NetTime.Microseconds(),
-				Valid:        true,
-			},
+			GunTime: ar.GunTime,
+			NetTime: ar.NetTime,
 		})
 	}
 	err = rs.AthleteRepo.SaveAthleteSplits(ctx, saveAthleteSplitsParams)
@@ -206,7 +200,7 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 	return allRecords, nil
 }
 
-func getResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, error) {
+func getResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.SplitConfig, startSplit *entity.SplitConfig) ([]*entity.AthleteSplit, error) {
 	// create slice for athlete's splits which will be populated further
 	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
 	athleteResultsMap := make(map[SplitID]*entity.AthleteSplit, len(splits))
@@ -247,8 +241,8 @@ func getResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*
 					AthleteID:  r.AthleteID,
 					SplitID:    s.ID,
 					TOD:        recTOD.TOD,
-					GunTime:    recTOD.TOD.Sub(r.WaveStart.Time),
-					NetTime:    netTime,
+					GunTime:    entity.Duration(recTOD.TOD.Sub(r.WaveStart.Time)),
+					NetTime:    entity.Duration(netTime),
 					Gender:     entity.CategoryGender(r.Gender),
 					CategoryID: r.CategoryID,
 				}
@@ -266,32 +260,24 @@ func getResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*
 	return singleAthleteRecords, nil
 }
 
-func isValidSplit(waveStart time.Time, tod time.Time, s *entity.Split, prev *entity.AthleteSplit) bool {
+func isValidSplit(waveStart time.Time, tod time.Time, s *entity.SplitConfig, prev *entity.AthleteSplit) bool {
 	// fmt.Printf("Checking split %s, for record %v, with prevResult %v\n", s.Name, tod, prev)
 	if tod.Before(waveStart) {
 		return false
 	}
-	validMinTime := waveStart.Add(s.MinTime)
+	validMinTime := waveStart.Add(time.Duration(s.MinTime))
 
 	if !(tod.After(validMinTime) || tod.Equal(validMinTime)) {
 		return false
 	}
-	if s.MaxTime != 0 && !(tod.Before(waveStart.Add(s.MaxTime)) || tod.Equal(waveStart.Add(s.MaxTime))) {
+	if s.MaxTime != 0 && !(tod.Before(waveStart.Add(time.Duration(s.MaxTime))) || tod.Equal(waveStart.Add(time.Duration(s.MaxTime)))) {
 		return false
 	}
 	if prev != nil {
-		if prev.TOD.Add(s.MinLapTime).After(tod) {
+		if prev.TOD.Add(time.Duration(s.MinLapTime)).After(tod) {
 			return false
 		}
 	}
 	// fmt.Printf("Split %s is valid\n\n", s.Name)
 	return true
 }
-
-// func arrangeSplitsByReaderName(ss []*entity.Split) map[SplitID]*entity.Split {
-// 	ssMap := map[SplitID]*entity.Split{}
-// 	for _, s := range ss {
-// 		ssMap[s.ID] = s
-// 	}
-// 	return ssMap
-// }

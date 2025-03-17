@@ -181,7 +181,7 @@ type GetEventAthleteRecordsCRow struct {
 	CategoryID uuid.NullUUID
 	Gender     CategoryGender
 	WaveStart  pgtype.Timestamp
-	RrTod      []*entity.RecordTOD
+	RrTod      []entity.RecordTOD
 }
 
 func (q *Queries) GetEventAthleteRecordsC(ctx context.Context, arg GetEventAthleteRecordsCParams) ([]GetEventAthleteRecordsCRow, error) {

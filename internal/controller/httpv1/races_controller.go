@@ -142,8 +142,8 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
-	var conf *entity.RaceConfig
-	err := readJSON(w, r, &conf)
+	var raceConfig *entity.RaceConfig
+	err := readJSON(w, r, &raceConfig)
 	if err != nil {
 		mes := "error parsing race config form data"
 		rr.log.Error(mes, err)
@@ -152,13 +152,13 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v := validator.New()
-	conf.Validate(r.Context(), v)
+	raceConfig.Validate(r.Context(), v)
 
 	if !v.Valid() {
 		failedValidationResponse(w, v.Errors)
 		return
 	}
-	err = rr.conf.SaveRaceConfig(r.Context(), conf)
+	err = rr.conf.SaveRaceConfig(r.Context(), raceConfig)
 	if err != nil {
 		mes := "error saving race config"
 		rr.log.Error(mes, err)
