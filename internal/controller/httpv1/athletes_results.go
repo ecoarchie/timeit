@@ -2,7 +2,6 @@ package httpv1
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -40,7 +39,7 @@ func (p athletesResultsRoutes) getResults(w http.ResponseWriter, r *http.Request
 	raceID, _ := uuid.Parse(rID)
 	err := p.service.RecalculateAthleteResult(context.Background(), raceID)
 	if err != nil {
-		fmt.Println(err)
+		p.logger.Error("Calculate results: ", "err", err)
 	}
 }
 

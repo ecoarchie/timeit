@@ -8,6 +8,7 @@ package database
 import (
 	"context"
 
+	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -130,6 +131,76 @@ func (q *Queries) GetEventAthleteRecords(ctx context.Context, arg GetEventAthlet
 			&i.WaveStart,
 			&i.Records,
 			&i.ReaderIds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventAthleteRecordsC = `-- name: GetEventAthleteRecordsC :many
+select 
+	ea.athlete_id,
+	ea.bib,
+	cb.chip,
+	ea.category_id,
+	a.gender,
+	w.start_time as wave_start,
+	(select array_agg(row(tr.id, rr.tod)::rr_tod order by rr.tod)::rr_tod[]
+	from
+		reader_records rr
+	join time_readers tr on
+		tr.reader_name = rr.reader_name
+		and tr.race_id = rr.race_id
+	where
+		rr.race_id = ea.race_id
+		and rr.chip = cb.chip
+		and rr.can_use is true) as rr_tod
+	from event_athlete ea
+	join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
+	join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
+	join athletes a on a.id = ea.athlete_id and a.race_id = ea.race_id
+	where ea.race_id = $1 
+		and ea.event_id = $2 
+		and w.is_launched is true
+`
+
+type GetEventAthleteRecordsCParams struct {
+	RaceID  uuid.UUID
+	EventID uuid.UUID
+}
+
+type GetEventAthleteRecordsCRow struct {
+	AthleteID  uuid.UUID
+	Bib        int32
+	Chip       int32
+	CategoryID uuid.NullUUID
+	Gender     CategoryGender
+	WaveStart  pgtype.Timestamp
+	RrTod      []*entity.RecordTOD
+}
+
+func (q *Queries) GetEventAthleteRecordsC(ctx context.Context, arg GetEventAthleteRecordsCParams) ([]GetEventAthleteRecordsCRow, error) {
+	rows, err := q.db.Query(ctx, getEventAthleteRecordsC, arg.RaceID, arg.EventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEventAthleteRecordsCRow
+	for rows.Next() {
+		var i GetEventAthleteRecordsCRow
+		if err := rows.Scan(
+			&i.AthleteID,
+			&i.Bib,
+			&i.Chip,
+			&i.CategoryID,
+			&i.Gender,
+			&i.WaveStart,
+			&i.RrTod,
 		); err != nil {
 			return nil, err
 		}

@@ -15,3 +15,8 @@ type ReaderRecord struct {
 	CanUse     bool      `json:"can_use"`
 	// Type uint `json:"type"`
 }
+
+type RecordTOD struct {
+	ReaderID uuid.UUID `json:"reader_id"`
+	TOD      time.Time `json:"tod"`
+}

@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,6 +44,29 @@ func New(url string, opts ...Option) (*Postgres, error) {
 	}
 
 	poolConfig.MaxConns = int32(pg.maxPoolSize) //nolint:gosec // skip integer overflow conversion int -> int32
+	// poolConfig.AfterConnect(context.Background(), )
+	poolConfig.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		// Manually register the composite type rr_tod
+		rrTOD, err := conn.LoadType(ctx, "rr_tod")
+		if err != nil {
+			fmt.Println("error loading type rr_tod")
+			return err
+		}
+		conn.TypeMap().RegisterType(rrTOD)
+
+		rrTODarray, err := conn.LoadType(ctx, "_rr_tod")
+		if err != nil {
+			fmt.Println("error loading type rr_tod")
+			return err
+		}
+		conn.TypeMap().RegisterType(rrTODarray)
+		log.Println("Registered custom type rr_tod")
+		return nil
+	}
+	// Fields: []pgtype.CompositeFields{
+	// 	{Name: "reader_id", Type: &pgtype.UUID{}},
+	// 	{Name: "tod", Type: &pgtype.Timestamp{}},
+	// },
 
 	for pg.connAttempts > 0 {
 		pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
@@ -65,6 +89,7 @@ func New(url string, opts ...Option) (*Postgres, error) {
 	if err := pg.Pool.Ping(context.Background()); err != nil {
 		log.Fatalf("Database is unreachable: %v", err)
 	}
+
 	return pg, nil
 }
 

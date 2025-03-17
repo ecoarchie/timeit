@@ -157,7 +157,7 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 	allRecords := []*entity.AthleteSplit{}
 	start = time.Now()
 	for _, r := range recs {
-		if len(r.Records) == 0 {
+		if len(r.RrTod) == 0 {
 			continue
 		}
 		// start = time.Now()
@@ -184,9 +184,8 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 			SplitID:   ar.SplitID,
 			AthleteID: ar.AthleteID,
 			Tod: pgtype.Timestamp{
-				Time:             ar.TOD,
-				InfinityModifier: 0,
-				Valid:            true,
+				Time:  ar.TOD,
+				Valid: true,
 			},
 			GunTime: pgtype.Interval{
 				Microseconds: ar.GunTime.Microseconds(),
@@ -207,24 +206,24 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 	return allRecords, nil
 }
 
-func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, error) {
+func getResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, error) {
 	// create slice for athlete's splits which will be populated further
 	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
 	athleteResultsMap := make(map[SplitID]*entity.AthleteSplit, len(splits))
 	// fmt.Printf("Check Athlete with ID: %v\n", r.AthleteID)
 
-	for i, recTOD := range r.Records {
-		recReader := r.ReaderIds[i]
+	for _, recTOD := range r.RrTod {
+		// recReader := recTOD.ReaderID
 		// iterate over splits for this event to find valid split for record's tod
 		// fmt.Printf("Checking TOD %v\n", recTOD)
 		for j, s := range splits {
 			// check if split reader id matches record's reader name
-			if s.TimeReaderID != recReader {
+			if s.TimeReaderID != recTOD.ReaderID {
 				continue
 			}
 			// check min_time, max_time constraint
 			prevLapSplitResult := athleteResultsMap[s.PreviousLapSplitID.UUID]
-			if !isValidSplit(r.WaveStart.Time, recTOD.Time, s, prevLapSplitResult) {
+			if !isValidSplit(r.WaveStart.Time, recTOD.TOD, s, prevLapSplitResult) {
 				continue
 			}
 
@@ -237,9 +236,9 @@ func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*e
 				var netTime time.Duration
 				if s.Type != entity.SplitTypeStart {
 					if startSplit != nil && singleAthleteRecords[0] != nil {
-						netTime = recTOD.Time.Sub(singleAthleteRecords[0].TOD)
+						netTime = recTOD.TOD.Sub(singleAthleteRecords[0].TOD)
 					} else {
-						netTime = recTOD.Time.Sub(r.WaveStart.Time)
+						netTime = recTOD.TOD.Sub(r.WaveStart.Time)
 					}
 				}
 				res := &entity.AthleteSplit{
@@ -247,8 +246,8 @@ func getResultForSingleAthlete(r database.GetEventAthleteRecordsRow, splits []*e
 					EventID:    s.EventID,
 					AthleteID:  r.AthleteID,
 					SplitID:    s.ID,
-					TOD:        recTOD.Time,
-					GunTime:    recTOD.Time.Sub(r.WaveStart.Time),
+					TOD:        recTOD.TOD,
+					GunTime:    recTOD.TOD.Sub(r.WaveStart.Time),
 					NetTime:    netTime,
 					Gender:     entity.CategoryGender(r.Gender),
 					CategoryID: r.CategoryID,

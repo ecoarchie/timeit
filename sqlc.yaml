@@ -19,3 +19,7 @@ sql:
             import: "github.com/google/uuid"
             type: "NullUUID"
           nullable: true
+        - db_type: "rr_tod"
+          go_type:
+            import: "github.com/ecoarchie/timeit/internal/entity"
+            type: "RecordTOD"

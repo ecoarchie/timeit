@@ -28,6 +28,7 @@ type ParticipantQuery interface {
 	GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (database.EventAthlete, error)
 	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
 	GetEventAthleteRecords(ctx context.Context, arg database.GetEventAthleteRecordsParams) ([]database.GetEventAthleteRecordsRow, error)
+	GetEventAthleteRecordsC(ctx context.Context, arg database.GetEventAthleteRecordsCParams) ([]database.GetEventAthleteRecordsCRow, error)
 	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
 	CreateAthleteSplits(ctx context.Context, arg []database.CreateAthleteSplitsParams) (int64, error)
 	WithTx(tx pgx.Tx) *database.Queries
@@ -256,17 +257,17 @@ func (ar *AthleteRepoPG) SaveAthleteSplits(ctx context.Context, as []database.Cr
 	return nil
 }
 
-func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsRow, []*entity.Split, error) {
+func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.Split, error) {
 	ss, err := ar.q.GetSplitsForEvent(ctx, eventID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	eaParams := database.GetEventAthleteRecordsParams{
+	eaParams := database.GetEventAthleteRecordsCParams{
 		RaceID:  raceID,
 		EventID: eventID,
 	}
-	records, err := ar.q.GetEventAthleteRecords(ctx, eaParams)
+	records, err := ar.q.GetEventAthleteRecordsC(ctx, eaParams)
 	if err != nil {
 		return nil, nil, err
 	}

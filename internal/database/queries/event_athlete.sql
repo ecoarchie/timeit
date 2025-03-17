@@ -53,3 +53,29 @@ join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb
 where ea.race_id = $1
 	and ea.event_id = $2
 	and w.is_launched is true;
+
+-- name: GetEventAthleteRecordsC :many
+select 
+	ea.athlete_id,
+	ea.bib,
+	cb.chip,
+	ea.category_id,
+	a.gender,
+	w.start_time as wave_start,
+	(select array_agg(row(tr.id, rr.tod)::rr_tod order by rr.tod)::rr_tod[]
+	from
+		reader_records rr
+	join time_readers tr on
+		tr.reader_name = rr.reader_name
+		and tr.race_id = rr.race_id
+	where
+		rr.race_id = ea.race_id
+		and rr.chip = cb.chip
+		and rr.can_use is true) as rr_tod
+	from event_athlete ea
+	join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
+	join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
+	join athletes a on a.id = ea.athlete_id and a.race_id = ea.race_id
+	where ea.race_id = $1 
+		and ea.event_id = $2 
+		and w.is_launched is true;
