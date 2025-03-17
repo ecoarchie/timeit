@@ -1,9 +1,10 @@
 package entity
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/google/uuid"
 )
 
@@ -21,28 +22,14 @@ type WaveStart struct {
 	StartTime time.Time `json:"wave_start_time"`
 }
 
-// type WaveStartRequest struct {
-// 	WaveID    string `json:"wave_id"`
-// 	StartTime time.Time `json:"wave_start_time"`
-// }
-
-func NewWave(raceID uuid.UUID, eventID uuid.UUID, name string, startTime time.Time) (*Wave, error) {
-	if raceID == uuid.Nil {
-		return nil, fmt.Errorf("empty raceID")
-	}
-	if eventID == uuid.Nil {
-		return nil, fmt.Errorf("empty eventID")
-	}
-	if name == "" {
-		return nil, fmt.Errorf("empty wave name")
-	}
-	id := uuid.New()
+func NewWave(dto *dto.WaveDTO, v *validator.Validator) *Wave {
+	startTime, _ := time.Parse(time.RFC3339, dto.StartTime)
 	return &Wave{
-		ID:         id,
-		RaceID:     raceID,
-		EventID:    eventID,
-		Name:       name,
+		ID:         dto.ID,
+		RaceID:     dto.RaceID,
+		EventID:    dto.EventID,
+		Name:       dto.Name,
 		StartTime:  startTime,
-		IsLaunched: false,
-	}, nil
+		IsLaunched: dto.IsLaunched,
+	}
 }

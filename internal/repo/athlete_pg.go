@@ -229,7 +229,7 @@ func (ar *AthleteRepoPG) SaveAthleteSplits(ctx context.Context, as []database.Cr
 	return nil
 }
 
-func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.SplitConfig, error) {
+func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.Split, error) {
 	ss, err := ar.q.GetSplitsForEvent(ctx, eventID)
 	if err != nil {
 		return nil, nil, err
@@ -244,9 +244,9 @@ func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context,
 		return nil, nil, err
 	}
 
-	splits := []*entity.SplitConfig{}
+	splits := []*entity.Split{}
 	for _, s := range ss {
-		split := &entity.SplitConfig{
+		split := &entity.Split{
 			ID:                 s.ID,
 			RaceID:             s.RaceID,
 			EventID:            s.EventID,
@@ -254,9 +254,9 @@ func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context,
 			Type:               entity.SplitType(s.SplitType),
 			DistanceFromStart:  int(s.DistanceFromStart),
 			TimeReaderID:       s.TimeReaderID,
-			MinTime:            s.MinTime,
-			MaxTime:            s.MaxTime,
-			MinLapTime:         s.MinLapTime,
+			MinTime:            pgxmapper.PgxIntervalToDuration(s.MinTime),
+			MaxTime:            pgxmapper.PgxIntervalToDuration(s.MaxTime),
+			MinLapTime:         pgxmapper.PgxIntervalToDuration(s.MinLapTime),
 			PreviousLapSplitID: s.PreviousLapSplitID,
 		}
 		splits = append(splits, split)

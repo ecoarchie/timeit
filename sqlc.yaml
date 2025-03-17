@@ -23,7 +23,3 @@ sql:
           go_type:
             import: "github.com/ecoarchie/timeit/internal/entity"
             type: "RecordTOD"
-        - db_type: "pg_catalog.interval"
-          go_type:
-            import: "github.com/ecoarchie/timeit/internal/entity"
-            type: "Duration"

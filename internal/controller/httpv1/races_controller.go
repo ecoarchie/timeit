@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/service"
 	"github.com/ecoarchie/timeit/pkg/logger"
@@ -124,15 +125,16 @@ func (rr *raceRoutes) getRaceConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
-	var req *entity.RaceFormData
-	err := readJSON(w, r, &req)
+	var dto *dto.RaceDTO
+	err := readJSON(w, r, &dto)
 	if err != nil {
 		mes := "error parsing new race form"
 		rr.log.Error(mes, err)
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	race, err := rr.conf.CreateRace(r.Context(), req)
+	v := validator.New()
+	race, err := rr.conf.CreateRace(r.Context(), dto, v)
 	if err != nil {
 		rr.log.Error("error creating race", err)
 		serverErrorResponse(w, err)
@@ -142,7 +144,7 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
-	var raceConfig *entity.RaceConfig
+	var raceConfig *dto.RaceConfig
 	err := readJSON(w, r, &raceConfig)
 	if err != nil {
 		mes := "error parsing race config form data"
@@ -158,7 +160,7 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 		failedValidationResponse(w, v.Errors)
 		return
 	}
-	err = rr.conf.SaveRaceConfig(r.Context(), raceConfig)
+	err = rr.conf.SaveRaceConfig(r.Context(), raceConfig, v)
 	if err != nil {
 		mes := "error saving race config"
 		rr.log.Error(mes, err)

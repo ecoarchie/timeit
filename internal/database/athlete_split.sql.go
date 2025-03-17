@@ -8,7 +8,6 @@ package database
 import (
 	"context"
 
-	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -27,8 +26,8 @@ type CreateAthleteSplitsParams struct {
 	SplitID   uuid.UUID
 	AthleteID uuid.UUID
 	Tod       pgtype.Timestamp
-	GunTime   entity.Duration
-	NetTime   entity.Duration
+	GunTime   pgtype.Interval
+	NetTime   pgtype.Interval
 }
 
 func (q *Queries) CreateAthleteSplits(ctx context.Context, arg CreateAthleteSplitsParams) error {

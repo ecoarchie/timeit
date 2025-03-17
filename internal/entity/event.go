@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/google/uuid"
 )
 
@@ -13,26 +15,81 @@ type Event struct {
 	Name             string    `json:"event_name"`
 	DistanceInMeters int       `json:"distance_in_meters"`
 	EventDate        time.Time `json:"event_date"`
+	Splits           []*Split
+	Waves            []*Wave
+	Categories       []*Category
 }
 
-func NewEvent(raceID uuid.UUID, name string, distanse int, eventDate time.Time) (*Event, error) {
-	if raceID == uuid.Nil {
-		return nil, fmt.Errorf("empty raceID")
+func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww []*dto.WaveDTO, cc []*dto.CategoryDTO, v *validator.Validator) *Event {
+	v.Check(e.DistanceInMeters > 0, "event distance", "must be greater than 0")
+	eventDate, _ := time.Parse(time.RFC3339, e.EventDate)
+
+	// Splits
+	// FIXME configure lap splits
+	v.Check(len(ss) != 0, "splits", "event must have at least one split")
+	if !v.Valid() {
+		return nil
 	}
-	if name == "" {
-		return nil, fmt.Errorf("empty event name")
+	splits := make([]*Split, 0, len(ss))
+	for _, s := range ss {
+		spl := NewSplit(s, trs, v)
+		if !v.Valid() {
+			return nil
+		}
+		splits = append(splits, spl)
 	}
-	if distanse <= 0 {
-		return nil, fmt.Errorf("distance must be greater than 0")
+	var splitsNames []string
+	splitTypeQty := make(map[SplitType]int)
+	for _, split := range splits {
+		splitsNames = append(splitsNames, split.Name)
+		splitTypeQty[split.Type]++
 	}
-	id := uuid.New()
+	v.Check(validator.Unique(splitsNames), "splits", "must have unique names for event")
+	v.Check(splitTypeQty[SplitTypeStart] < 2, "split with type start", "must be 0 or 1")
+	v.Check(splitTypeQty[SplitTypeFinish] == 1, "split with type finish", "must be only 1")
+
+	// Waves
+	v.Check(len(ww) > 0, "waves", "must be at least one for event")
+	if !v.Valid() {
+		return nil
+	}
+	waves := make([]*Wave, 0, len(ww))
+	var wavesNames []string
+	for _, w := range ww {
+		wave := NewWave(w, v)
+		if !v.Valid() {
+			return nil
+		}
+		wavesNames = append(wavesNames, w.Name)
+		waves = append(waves, wave)
+	}
+	v.Check(validator.Unique(wavesNames), "waves", "must have unique names for event")
+
+	// Categories. Event may have no categories at all
+	categories := make([]*Category, 0, len(cc))
+	if len(cc) > 0 {
+		var categoryNames []string
+		for _, c := range cc {
+			cat := NewCategory(c, v)
+			if !v.Valid() {
+				return nil
+			}
+			categoryNames = append(categoryNames, c.Name)
+			categories = append(categories, cat)
+		}
+		v.Check(validator.Unique(categoryNames), "categories", "must have unique names for event")
+	}
+
 	return &Event{
-		ID:               id,
-		RaceID:           raceID,
-		Name:             name,
-		DistanceInMeters: distanse,
+		ID:               e.ID,
+		RaceID:           e.RaceID,
+		Name:             e.Name,
+		DistanceInMeters: e.DistanceInMeters,
 		EventDate:        eventDate,
-	}, nil
+		Splits:           splits,
+		Waves:            waves,
+		Categories:       categories,
+	}
 }
 
 func (e Event) String() string {

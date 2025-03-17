@@ -12,8 +12,8 @@ type AthleteSplit struct {
 	AthleteID       uuid.UUID
 	SplitID         uuid.UUID
 	TOD             time.Time
-	GunTime         Duration
-	NetTime         Duration
+	GunTime         time.Duration
+	NetTime         time.Duration
 	Gender          CategoryGender
 	CategoryID      uuid.NullUUID
 	GunRankOverall  int

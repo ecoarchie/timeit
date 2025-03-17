@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -49,24 +50,20 @@ func New(url string, opts ...Option) (*Postgres, error) {
 		// Manually register the composite type rr_tod
 		rrTOD, err := conn.LoadType(ctx, "rr_tod")
 		if err != nil {
-			fmt.Println("error loading type rr_tod")
+			slog.Error("Error loading 'rr_tod' type from Postgres")
 			return err
 		}
 		conn.TypeMap().RegisterType(rrTOD)
 
 		rrTODarray, err := conn.LoadType(ctx, "_rr_tod")
 		if err != nil {
-			fmt.Println("error loading type rr_tod")
+			slog.Error("Error loading '_rr_tod' type from Postgres") // _ marks array of type
 			return err
 		}
 		conn.TypeMap().RegisterType(rrTODarray)
-		log.Println("Registered custom type rr_tod")
+		slog.Info("Registered custom type rr_tod")
 		return nil
 	}
-	// Fields: []pgtype.CompositeFields{
-	// 	{Name: "reader_id", Type: &pgtype.UUID{}},
-	// 	{Name: "tod", Type: &pgtype.Timestamp{}},
-	// },
 
 	for pg.connAttempts > 0 {
 		pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
@@ -74,11 +71,11 @@ func New(url string, opts ...Option) (*Postgres, error) {
 			if pingErr := pg.Pool.Ping(context.Background()); pingErr == nil {
 				break
 			} else {
-				// TODO Should I close the old connection here?
+				// BUG Should I close the old connection here?
 				log.Println("failed ping to database")
 			}
 		}
-		log.Printf("Postgres is trying to connect, attempts left: %d", pg.connAttempts)
+		slog.Info("Postgres is trying to connect: ", "attempt left", pg.connAttempts)
 		time.Sleep(pg.connTimeout)
 		pg.connAttempts--
 	}

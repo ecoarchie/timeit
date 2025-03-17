@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/pkg/logger"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/google/uuid"
 )
 
@@ -16,19 +18,19 @@ type ValidationErrors map[string]string
 // TODO add category boundaries validation
 
 type RaceConfigurator interface {
-	SaveRaceConfig(ctx context.Context, rc *entity.RaceConfig) error
+	SaveRaceConfig(ctx context.Context, rc *dto.RaceConfig, v *validator.Validator) error
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
-	CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error)
+	CreateRace(ctx context.Context, req *dto.RaceDTO, v *validator.Validator) (*entity.Race, error)
 	DeleteRace(ctx context.Context, raceID string) error
-	GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error)
+	GetRaceConfig(ctx context.Context, raceID string) (*dto.RaceConfig, error)
 	GetWavesForRace(ctx context.Context, raceID string) ([]*entity.Wave, error)
 	StartWave(ctx context.Context, raceID string, startInfo entity.WaveStart) (time.Time, bool, error)
 	GetEventIDsWithWaveStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type RaceRepo interface {
-	SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) error
-	GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceConfig, error)
+	SaveRaceConfig(ctx context.Context, r *entity.Race, trs []*entity.TimeReader, ee []*entity.Event) error
+	GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*dto.RaceConfig, error)
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
 	SaveRaceInfo(ctx context.Context, race *entity.Race) error
 	SaveWave(ctx context.Context, wave *entity.Wave) error
@@ -60,19 +62,19 @@ func (rs RaceService) GetEventIDsWithWaveStarted(ctx context.Context, raceID uui
 	return rs.repo.GetEventIDsWithWavesStarted(ctx, raceID)
 }
 
-func (rs RaceService) CreateRace(ctx context.Context, req *entity.RaceFormData) (*entity.Race, error) {
-	r, err := entity.NewRace(req)
-	if err != nil {
-		return nil, err
+func (rs RaceService) CreateRace(ctx context.Context, req *dto.RaceDTO, v *validator.Validator) (*entity.Race, error) {
+	r := entity.NewRace(req, v)
+	if !v.Valid() {
+		return nil, nil
 	}
-	err = rs.repo.SaveRaceInfo(ctx, r)
+	err := rs.repo.SaveRaceInfo(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func (rs RaceService) GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceConfig, error) {
+func (rs RaceService) GetRaceConfig(ctx context.Context, raceID string) (*dto.RaceConfig, error) {
 	uuID, err := uuid.Parse(raceID)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing race UUID")
@@ -89,8 +91,40 @@ func (rs RaceService) GetRaceConfig(ctx context.Context, raceID string) (*entity
 	return rconfig, nil
 }
 
-func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *entity.RaceConfig) error {
-	err := rs.repo.SaveRaceConfig(ctx, rc)
+func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceConfig, v *validator.Validator) error {
+	race := entity.NewRace(rc.RaceDTO, v)
+	if !v.Valid() {
+		return fmt.Errorf("save race config validation error: race info")
+	}
+
+	v.Check(len(rc.TimeReaders) != 0, "time readers", "race must have at least one time reader")
+	// no point for further validation since there are no time readers
+	if !v.Valid() {
+		return fmt.Errorf("save race config validation error: no time readers")
+	}
+
+	timeReaders := make([]*entity.TimeReader, 0, len(rc.TimeReaders))
+	var timeReadersNames []string
+	for _, tr := range rc.TimeReaders {
+		timeReader := entity.NewTimeReader(tr, v)
+		if !v.Valid() {
+			return fmt.Errorf("save race config validation error: time_reader: %s", tr.ID.String())
+		}
+		timeReadersNames = append(timeReadersNames, tr.ReaderName)
+		timeReaders = append(timeReaders, timeReader)
+	}
+	v.Check(validator.Unique(timeReadersNames), "time readers names", "must be unique")
+
+	events := make([]*entity.Event, 0, len(rc.Events))
+	for _, e := range rc.Events {
+		event := entity.NewEvent(e.EventDTO, e.Splits, rc.TimeReaders, e.Waves, e.Categories, v)
+		if !v.Valid() {
+			return fmt.Errorf("save race config validation error: event: %s", e.ID.String())
+		}
+		events = append(events, event)
+	}
+
+	err := rs.repo.SaveRaceConfig(ctx, race, timeReaders, events)
 	if err != nil {
 		const msg = "error saving race to repo"
 		rs.log.Error(msg, err)

@@ -1,10 +1,10 @@
 package entity
 
 import (
-	"encoding/json"
-	"errors"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/google/uuid"
 )
 
@@ -30,56 +30,39 @@ type Split struct {
 	PreviousLapSplitID uuid.NullUUID
 }
 
-type Duration time.Duration
-
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
-}
-
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
+func NewSplit(dto *dto.SplitDTO, trs []*dto.TimeReaderDTO, v *validator.Validator) *Split {
+	v.Check(IsValidSplitType(SplitType(dto.Type)), "split type", "must be start, standard or finish")
+	var tpIDsForLocs []uuid.UUID
+	for _, l := range trs {
+		tpIDsForLocs = append(tpIDsForLocs, l.ID)
 	}
-	switch value := v.(type) {
-	case float64:
-		*d = Duration(time.Duration(value))
+
+	v.Check(validator.PermittedValue(dto.TimeReaderID, tpIDsForLocs...), "split ID", "must have valid corresponded time reader")
+
+	v.Check(dto.DistanceFromStart >= 0, "split distance from start", "must be greater or equal to 0")
+	minTime, _ := time.ParseDuration(dto.MinTime)
+	maxTime, _ := time.ParseDuration(dto.MaxTime)
+	minLapTime, _ := time.ParseDuration(dto.MinLapTime)
+	v.Check(minTime >= 0, "split min time", "must be greater or equal to 0")
+	v.Check(maxTime >= 0, "split max time", "must be greater or equal to 0")
+	v.Check(minLapTime >= 0, "split min lap time", "must be greater or equal to 0")
+
+	if !v.Valid() {
 		return nil
-	case string:
-		tmp, err := time.ParseDuration(value)
-		if err != nil {
-			return err
-		}
-		*d = Duration(tmp)
-		return nil
-	default:
-		return errors.New("invalid duration")
 	}
-}
-
-// func (tp *Split) SetValidMinMaxTimes(athleteWaceStart time.Time) {
-// 	if tp.MinTime == 0 {
-// 		tp.ValidMinTime = athleteWaceStart
-// 	} else {
-// 		tp.ValidMinTime = athleteWaceStart.Add(time.Duration(tp.MinTime) * time.Second)
-// 	}
-// 	if tp.MaxTime == 0 {
-// 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(time.Hour) * 24)
-// 	} else {
-// 		tp.ValidMaxTime = athleteWaceStart.Add(time.Duration(tp.MaxTime) * time.Second)
-// 	}
-// }
-
-type NewSplitrequest struct {
-	RaceID            uuid.UUID `json:"race_id"`
-	EventID           uuid.UUID `json:"event_id"`
-	Name              string    `json:"name"`
-	Type              SplitType `json:"type"`
-	DistanceFromStart int       `json:"distance_from_start"`
-	ReaderName        string    `json:"reader_name"`
-	MinTime           int64     `json:"min_time_sec"`
-	MaxTime           int64     `json:"max_time_sec"`
-	MinLapTime        int64     `json:"min_lap_time_sec"`
+	return &Split{
+		ID:                 dto.ID,
+		RaceID:             dto.RaceID,
+		EventID:            dto.EventID,
+		Name:               dto.Name,
+		Type:               SplitType(dto.Type),
+		DistanceFromStart:  dto.DistanceFromStart,
+		TimeReaderID:       dto.TimeReaderID,
+		MinTime:            minTime,
+		MaxTime:            maxTime,
+		MinLapTime:         minLapTime,
+		PreviousLapSplitID: uuid.NullUUID{},
+	}
 }
 
 func IsValidSplitType(tp SplitType) bool {
@@ -91,17 +74,22 @@ func IsValidSplitType(tp SplitType) bool {
 	}
 }
 
-func RandomSplit(name string, typ SplitType, dst int, timeReaderID uuid.UUID, min, max, lap time.Duration) *Split {
-	return &Split{
-		ID:                uuid.New(),
-		RaceID:            uuid.New(),
-		EventID:           uuid.New(),
-		Name:              name,
-		Type:              typ,
-		DistanceFromStart: dst,
-		TimeReaderID:      timeReaderID,
-		MinTime:           min,
-		MaxTime:           max,
-		MinLapTime:        lap,
+func (s *Split) IsValidForRecord(waveStart time.Time, tod time.Time, prev *AthleteSplit) bool {
+	if tod.Before(waveStart) {
+		return false
 	}
+	validMinTime := waveStart.Add(time.Duration(s.MinTime))
+
+	if !(tod.After(validMinTime) || tod.Equal(validMinTime)) {
+		return false
+	}
+	if s.MaxTime != 0 && !(tod.Before(waveStart.Add(time.Duration(s.MaxTime))) || tod.Equal(waveStart.Add(time.Duration(s.MaxTime)))) {
+		return false
+	}
+	if prev != nil {
+		if prev.TOD.Add(time.Duration(s.MinLapTime)).After(tod) {
+			return false
+		}
+	}
+	return true
 }

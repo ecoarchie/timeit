@@ -3,6 +3,7 @@ package validator
 import (
 	"regexp"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -49,7 +50,7 @@ func Matches(value string, rx *regexp.Regexp) bool {
 }
 
 func IsUUID(value string) bool {
-	_, err := uuid.Parse(value)
+	err := uuid.Validate(value)
 	return err == nil
 }
 
@@ -60,4 +61,14 @@ func Unique[T comparable](values []T) bool {
 		uniqueValues[value] = true
 	}
 	return len(values) == len(uniqueValues)
+}
+
+func IsValidTime(layout, value string) bool {
+	_, err := time.Parse(layout, value)
+	return err == nil
+}
+
+func IsValidDuration(value string) bool {
+	_, err := time.ParseDuration(value)
+	return err == nil
 }

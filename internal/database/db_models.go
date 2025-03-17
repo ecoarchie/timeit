@@ -8,7 +8,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 
-	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -119,8 +118,8 @@ type AthleteSplit struct {
 	SplitID   uuid.UUID
 	AthleteID uuid.UUID
 	Tod       pgtype.Timestamp
-	GunTime   entity.Duration
-	NetTime   entity.Duration
+	GunTime   pgtype.Interval
+	NetTime   pgtype.Interval
 }
 
 type Category struct {
@@ -182,9 +181,9 @@ type Split struct {
 	SplitType          TpType
 	DistanceFromStart  int32
 	TimeReaderID       uuid.UUID
-	MinTime            entity.Duration
-	MaxTime            entity.Duration
-	MinLapTime         entity.Duration
+	MinTime            pgtype.Interval
+	MaxTime            pgtype.Interval
+	MinLapTime         pgtype.Interval
 	PreviousLapSplitID uuid.NullUUID
 }
 

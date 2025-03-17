@@ -54,7 +54,7 @@ func (rr *RaceRepoPG) WithTx(tx pgx.Tx) *RaceRepoPG {
 	}
 }
 
-func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) error {
+func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.Race, trs []*entity.TimeReader, ee []*entity.Event) error {
 	tx, err := rr.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -74,11 +74,11 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 	}
 
 	// Save physical time_readers
-	for _, l := range r.TimeReaders {
+	for _, tr := range trs {
 		locParam := database.AddOrUpdateTimeReaderParams{
-			ID:         l.ID,
-			RaceID:     l.RaceID,
-			ReaderName: l.ReaderName,
+			ID:         tr.ID,
+			RaceID:     tr.RaceID,
+			ReaderName: tr.ReaderName,
 		}
 		_, err := qtx.q.AddOrUpdateTimeReader(ctx, locParam)
 		if err != nil {
@@ -87,7 +87,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 	}
 
 	// Save events
-	for _, e := range r.Events {
+	for _, e := range ee {
 		eParams := database.AddOrUpdateEventParams{
 			ID:               e.ID,
 			RaceID:           e.RaceID,
@@ -97,26 +97,26 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 		}
 		_, err := qtx.q.AddOrUpdateEvent(ctx, eParams)
 		if err != nil {
-			return fmt.Errorf("error adding event with ID %s: %v", eParams.ID, err)
+			return fmt.Errorf("error saving event with ID %s to db: %v", eParams.ID, err)
 		}
 
 		// Save splits for event
-		for _, tp := range e.Splits {
-			tpParams := database.AddOrUpdateSplitParams{
-				ID:                tp.ID,
-				RaceID:            tp.RaceID,
-				EventID:           tp.EventID,
-				SplitName:         tp.Name,
-				SplitType:         database.TpType(tp.Type),
-				DistanceFromStart: int32(tp.DistanceFromStart),
-				TimeReaderID:      tp.TimeReaderID,
-				MinTime:           tp.MinTime,
-				MaxTime:           tp.MaxTime,
-				MinLapTime:        tp.MinLapTime,
+		for _, s := range e.Splits {
+			sParams := database.AddOrUpdateSplitParams{
+				ID:                s.ID,
+				RaceID:            s.RaceID,
+				EventID:           s.EventID,
+				SplitName:         s.Name,
+				SplitType:         database.TpType(s.Type),
+				DistanceFromStart: int32(s.DistanceFromStart),
+				TimeReaderID:      s.TimeReaderID,
+				MinTime:           pgxmapper.DurationToPgxInterval(s.MinTime),
+				MaxTime:           pgxmapper.DurationToPgxInterval(s.MaxTime),
+				MinLapTime:        pgxmapper.DurationToPgxInterval(s.MinLapTime),
 			}
-			_, err := qtx.q.AddOrUpdateSplit(ctx, tpParams)
+			_, err := qtx.q.AddOrUpdateSplit(ctx, sParams)
 			if err != nil {
-				return fmt.Errorf("error adding split with ID %s: %v", tpParams.ID, err)
+				return fmt.Errorf("error saving split with ID %s to db: %v", sParams.ID, err)
 			}
 		}
 
@@ -132,7 +132,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 			}
 			_, err := qtx.q.AddOrUpdateWave(ctx, wParams)
 			if err != nil {
-				return fmt.Errorf("error adding wave with ID %s: %v", wParams.ID, err)
+				return fmt.Errorf("error saving wave with ID %s to db: %v", wParams.ID, err)
 			}
 		}
 
@@ -151,7 +151,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.RaceConfig) 
 			}
 			_, err := qtx.q.AddOrUpdateCategory(ctx, cParams)
 			if err != nil {
-				return fmt.Errorf("error adding category with ID %s: %v", cParams.ID, err)
+				return fmt.Errorf("error saving category with ID %s to db: %v", cParams.ID, err)
 			}
 		}
 	}
@@ -204,7 +204,7 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 				DistanceInMeters: int(e.DistanceInMeters),
 				EventDate:        e.EventDate.Time,
 			},
-			Splits:     []*entity.SplitConfig{},
+			Splits:     []*entity.Split{},
 			Waves:      []*entity.Wave{},
 			Categories: []*entity.Category{},
 		}
@@ -215,7 +215,7 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 			return nil, err
 		}
 		for _, s := range splits {
-			split := &entity.SplitConfig{
+			split := &entity.Split{
 				ID:                s.ID,
 				RaceID:            s.RaceID,
 				EventID:           s.EventID,
@@ -223,9 +223,9 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 				Type:              entity.SplitType(s.SplitType),
 				DistanceFromStart: int(s.DistanceFromStart),
 				TimeReaderID:      s.TimeReaderID,
-				MinTime:           s.MinTime,
-				MaxTime:           s.MaxTime,
-				MinLapTime:        s.MinLapTime,
+				MinTime:           pgxmapper.PgxIntervalToDuration(s.MinTime),
+				MaxTime:           pgxmapper.PgxIntervalToDuration(s.MaxTime),
+				MinLapTime:        pgxmapper.PgxIntervalToDuration(s.MinLapTime),
 			}
 			event.Splits = append(event.Splits, split)
 		}

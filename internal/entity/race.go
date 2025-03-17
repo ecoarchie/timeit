@@ -1,9 +1,10 @@
 package entity
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
+	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/google/uuid"
 )
 
@@ -13,22 +14,17 @@ type Race struct {
 	Timezone string    `json:"timezone"`
 }
 
-func NewRace(req *RaceFormData) (*Race, error) {
-	if !IsIANATimezone(req.Timezone) {
-		return nil, fmt.Errorf("not valid IANA timezone")
+func NewRace(req *dto.RaceDTO, v *validator.Validator) *Race {
+	v.Check(IsIANATimezone(req.Timezone), "timezone", "must be valid IANA timezone")
+	if !v.Valid() {
+		return nil
 	}
-	if req.Name == "" {
-		return nil, fmt.Errorf("empty race name")
-	}
-	id, err := uuid.Parse(req.Id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid race id")
-	}
+
 	return &Race{
-		ID:       id,
+		ID:       req.ID,
 		Name:     req.Name,
 		Timezone: req.Timezone,
-	}, nil
+	}
 }
 
 func IsIANATimezone(tz string) bool {
