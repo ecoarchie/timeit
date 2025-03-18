@@ -41,16 +41,14 @@ type RaceRepo interface {
 }
 
 type RaceService struct {
-	raceCache *RaceCache
-	repo      RaceRepo
-	log       *logger.Logger
+	repo RaceRepo
+	log  *logger.Logger
 }
 
-func NewRaceService(logger *logger.Logger, rc *RaceCache, repo RaceRepo) *RaceService {
+func NewRaceService(logger *logger.Logger, repo RaceRepo) *RaceService {
 	return &RaceService{
-		log:       logger,
-		raceCache: rc,
-		repo:      repo,
+		log:  logger,
+		repo: repo,
 	}
 }
 
@@ -87,7 +85,6 @@ func (rs RaceService) GetRaceConfig(ctx context.Context, raceID string) (*dto.Ra
 		return nil, nil
 	}
 
-	rs.raceCache.UpdateWith(rconfig)
 	return rconfig, nil
 }
 
@@ -124,14 +121,18 @@ func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceConfig, v 
 		events = append(events, event)
 	}
 
+	// FIXME pass to SaveRaceConfig the model
+	// model := &entity.RaceModel{
+	// 	Race:        race,
+	// 	TimeReaders: timeReaders,
+	// 	Events:      events,
+	// }
 	err := rs.repo.SaveRaceConfig(ctx, race, timeReaders, events)
 	if err != nil {
 		const msg = "error saving race to repo"
 		rs.log.Error(msg, err)
 		return err
 	}
-	rs.raceCache.UpdateWith(rc)
-	rs.log.Info("race cache updated")
 	return nil
 }
 

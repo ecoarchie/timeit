@@ -54,15 +54,15 @@ type WaveDTO struct {
 }
 
 type CategoryDTO struct {
-	ID       uuid.UUID `json:"category_id"`
-	RaceID   uuid.UUID `json:"race_id"`
-	EventID  uuid.UUID `json:"event_id"`
-	Name     string    `json:"category_name"`
-	Gender   string    `json:"category_gender"`
-	AgeFrom  int       `json:"age_from"`
-	DateFrom string    `json:"date_from"`
-	AgeTo    int       `json:"age_to"`
-	DateTo   string    `json:"date_to"`
+	ID           uuid.UUID `json:"category_id"`
+	RaceID       uuid.UUID `json:"race_id"`
+	EventID      uuid.UUID `json:"event_id"`
+	Name         string    `json:"category_name"`
+	Gender       string    `json:"category_gender"`
+	AgeFrom      int       `json:"age_from"`
+	FromRaceDate bool      `json:"from_race_date"`
+	AgeTo        int       `json:"age_to"`
+	ToRaceDate   bool      `json:"to_race_date"`
 }
 
 type RaceConfig struct {
@@ -158,11 +158,6 @@ func validateCategory(v *validator.Validator, raceID, eventID uuid.UUID, c *Cate
 	v.Check(eventID != uuid.Nil, "category event_id", "must not be empty")
 	v.Check(eventID == c.EventID, "category event_id", "invalid event ID for category")
 	v.Check(c.Name != "", "category name", "must not be empty")
-	v.Check(
-		validator.IsValidTime(time.RFC3339, c.DateFrom) && validator.IsValidTime(time.DateOnly, c.DateTo),
-		"date_from and date_to",
-		"must be date in RFC3339 format",
-	)
 }
 
 func validateWave(v *validator.Validator, raceID, eventID uuid.UUID, w *WaveDTO) {

@@ -31,14 +31,14 @@ func Run(cfg *config.Config) {
 	queries := database.New(pg.Pool)
 
 	// Race Cache
-	raceCache := service.NewRaceCache()
+	// raceCache := service.NewRaceCache()
 
 	// Services
 	logger.Info("Creating services")
-	raceService := service.NewRaceService(logger, raceCache, repo.NewRaceRepoPG(queries, pg))
+	raceService := service.NewRaceService(logger, repo.NewRaceRepoPG(queries, pg))
 
 	athleteRepo := repo.NewAthleteRepoPG(queries, pg)
-	athleteService := service.NewAthleteService(logger, athleteRepo, raceCache)
+	athleteService := service.NewAthleteService(logger, athleteRepo)
 	resultsService := service.NewResultsService(athleteRepo)
 
 	pRes := service.NewAthleteResultsService(raceService, athleteService, resultsService)

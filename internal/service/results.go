@@ -200,7 +200,7 @@ func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID
 func getResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, error) {
 	// create slice for athlete's splits which will be populated further
 	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
-	athleteResultsMap := make(map[SplitID]*entity.AthleteSplit, len(splits))
+	athleteResultsMap := make(map[entity.SplitID]*entity.AthleteSplit, len(splits))
 	// fmt.Printf("Check Athlete with ID: %v\n", r.AthleteID)
 
 	for _, recTOD := range r.RrTod {

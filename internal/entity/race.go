@@ -31,3 +31,9 @@ func IsIANATimezone(tz string) bool {
 	_, err := time.LoadLocation(tz) // tz must correspond to IANA time zones names
 	return err == nil
 }
+
+type RaceModel struct {
+	*Race
+	TimeReaders []*TimeReader
+	Events      []*Event
+}

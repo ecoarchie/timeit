@@ -216,16 +216,17 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 		}
 		for _, s := range splits {
 			split := &entity.Split{
-				ID:                s.ID,
-				RaceID:            s.RaceID,
-				EventID:           s.EventID,
-				Name:              s.SplitName,
-				Type:              entity.SplitType(s.SplitType),
-				DistanceFromStart: int(s.DistanceFromStart),
-				TimeReaderID:      s.TimeReaderID,
-				MinTime:           pgxmapper.PgxIntervalToDuration(s.MinTime),
-				MaxTime:           pgxmapper.PgxIntervalToDuration(s.MaxTime),
-				MinLapTime:        pgxmapper.PgxIntervalToDuration(s.MinLapTime),
+				ID:                 s.ID,
+				RaceID:             s.RaceID,
+				EventID:            s.EventID,
+				Name:               s.SplitName,
+				Type:               entity.SplitType(s.SplitType),
+				DistanceFromStart:  int(s.DistanceFromStart),
+				TimeReaderID:       s.TimeReaderID,
+				MinTime:            pgxmapper.PgxIntervalToDuration(s.MinTime),
+				MaxTime:            pgxmapper.PgxIntervalToDuration(s.MaxTime),
+				MinLapTime:         pgxmapper.PgxIntervalToDuration(s.MinLapTime),
+				PreviousLapSplitID: s.PreviousLapSplitID,
 			}
 			event.Splits = append(event.Splits, split)
 		}

@@ -14,25 +14,26 @@ import (
 
 const addOrUpdateSplit = `-- name: AddOrUpdateSplit :one
 INSERT INTO splits
-(id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time)
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+(id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time, previous_lap_split_id)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT (race_id, event_id, id)
 DO UPDATE
-SET split_name=EXCLUDED.split_name, split_type=EXCLUDED. split_type, distance_from_start=EXCLUDED.distance_from_start, time_reader_id=EXCLUDED.time_reader_id, min_time=EXCLUDED.min_time, max_time=EXCLUDED.max_time, min_lap_time=EXCLUDED.min_lap_time
+SET split_name=EXCLUDED.split_name, split_type=EXCLUDED. split_type, distance_from_start=EXCLUDED.distance_from_start, time_reader_id=EXCLUDED.time_reader_id, min_time=EXCLUDED.min_time, max_time=EXCLUDED.max_time, min_lap_time=EXCLUDED.min_lap_time, previous_lap_split_id=EXCLUDED.previous_lap_split_id
 RETURNING id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time, previous_lap_split_id
 `
 
 type AddOrUpdateSplitParams struct {
-	ID                uuid.UUID
-	RaceID            uuid.UUID
-	EventID           uuid.UUID
-	SplitName         string
-	SplitType         TpType
-	DistanceFromStart int32
-	TimeReaderID      uuid.UUID
-	MinTime           pgtype.Interval
-	MaxTime           pgtype.Interval
-	MinLapTime        pgtype.Interval
+	ID                 uuid.UUID
+	RaceID             uuid.UUID
+	EventID            uuid.UUID
+	SplitName          string
+	SplitType          TpType
+	DistanceFromStart  int32
+	TimeReaderID       uuid.UUID
+	MinTime            pgtype.Interval
+	MaxTime            pgtype.Interval
+	MinLapTime         pgtype.Interval
+	PreviousLapSplitID uuid.NullUUID
 }
 
 func (q *Queries) AddOrUpdateSplit(ctx context.Context, arg AddOrUpdateSplitParams) (Split, error) {
@@ -47,6 +48,7 @@ func (q *Queries) AddOrUpdateSplit(ctx context.Context, arg AddOrUpdateSplitPara
 		arg.MinTime,
 		arg.MaxTime,
 		arg.MinLapTime,
+		arg.PreviousLapSplitID,
 	)
 	var i Split
 	err := row.Scan(
@@ -115,34 +117,21 @@ func (q *Queries) GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]S
 }
 
 const getSplitsForRace = `-- name: GetSplitsForRace :many
-SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time
+SELECT id, race_id, event_id, split_name, split_type, distance_from_start, time_reader_id, min_time, max_time, min_lap_time, previous_lap_split_id
 FROM splits
 WHERE race_id=$1
 ORDER BY distance_from_start ASC
 `
 
-type GetSplitsForRaceRow struct {
-	ID                uuid.UUID
-	RaceID            uuid.UUID
-	EventID           uuid.UUID
-	SplitName         string
-	SplitType         TpType
-	DistanceFromStart int32
-	TimeReaderID      uuid.UUID
-	MinTime           pgtype.Interval
-	MaxTime           pgtype.Interval
-	MinLapTime        pgtype.Interval
-}
-
-func (q *Queries) GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]GetSplitsForRaceRow, error) {
+func (q *Queries) GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]Split, error) {
 	rows, err := q.db.Query(ctx, getSplitsForRace, raceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetSplitsForRaceRow
+	var items []Split
 	for rows.Next() {
-		var i GetSplitsForRaceRow
+		var i Split
 		if err := rows.Scan(
 			&i.ID,
 			&i.RaceID,
@@ -154,6 +143,7 @@ func (q *Queries) GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]Get
 			&i.MinTime,
 			&i.MaxTime,
 			&i.MinLapTime,
+			&i.PreviousLapSplitID,
 		); err != nil {
 			return nil, err
 		}

@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
@@ -18,18 +19,18 @@ const (
 )
 
 type Category struct {
-	ID       uuid.UUID      `json:"category_id"`
-	RaceID   uuid.UUID      `json:"race_id"`
-	EventID  uuid.UUID      `json:"event_id"`
-	Name     string         `json:"category_name"`
-	Gender   CategoryGender `json:"category_gender"`
-	AgeFrom  int            `json:"age_from"`
-	DateFrom time.Time      `json:"date_from"`
-	AgeTo    int            `json:"age_to"`
-	DateTo   time.Time      `json:"date_to"`
+	ID       uuid.UUID
+	RaceID   uuid.UUID
+	EventID  uuid.UUID
+	Name     string
+	Gender   CategoryGender
+	AgeFrom  int
+	DateFrom time.Time
+	AgeTo    int
+	DateTo   time.Time
 }
 
-func NewCategory(dto *dto.CategoryDTO, v *validator.Validator) *Category {
+func NewCategory(dto *dto.CategoryDTO, eventDate time.Time, v *validator.Validator) *Category {
 	v.Check(IsValidGender(CategoryGender(dto.Gender)), "gender", "must be male, female or mixed")
 	v.Check(dto.AgeFrom >= 0, "category age from", "must be greater or equal to 0")
 	v.Check(dto.AgeTo > 0, "category age to", "must be greater than 0")
@@ -38,10 +39,7 @@ func NewCategory(dto *dto.CategoryDTO, v *validator.Validator) *Category {
 		return nil
 	}
 
-	dateFrom, _ := time.Parse(time.DateOnly, dto.DateFrom)
-	dateTo, _ := time.Parse(time.DateOnly, dto.DateTo)
-
-	// FIXME rewrite so from ui come only 'on race date' flag true or false, and calculate dateFrom and dateTo depending on these flags
+	dateFrom, dateTo := GetDateRange(dto, eventDate)
 	return &Category{
 		ID:       dto.ID,
 		RaceID:   dto.RaceID,
@@ -55,21 +53,42 @@ func NewCategory(dto *dto.CategoryDTO, v *validator.Validator) *Category {
 	}
 }
 
-// FIXME add method to check valid category, now it fetches from DB for each athlete while creating one
-// func (c *Category) ValidForGenderAndDateOfBirth(gender CategoryGender, dob time.Time) bool {
-// 	if gender != c.Gender {
-// 		return false
-// 	}
+// TODO Write test for it
+func (c *Category) Valid(dob time.Time) bool {
+	return (dob.Before(c.DateTo) || dob.Equal(c.DateTo)) && (dob.After(c.DateFrom) || dob.Equal(c.DateFrom))
+}
 
-// 	bdFrom := c.BirthDateFrom(dob)
-// 	bdTo := c.BirthDateTo(dob)
-// 	return (dob.After(bdFrom) || dob.Equal(bdFrom)) && (dob.Before(bdTo) || dob.Equal(bdTo))
-// }
+func GetDateRange(dto *dto.CategoryDTO, eventDate time.Time) (dateFrom, dateTo time.Time) {
+	if dto.FromRaceDate {
+		dateTo = time.Date(eventDate.Year()-dto.AgeFrom, eventDate.Month(), eventDate.Day(), 23, 59, 59, 0, eventDate.Location())
+	} else {
+		dateTo = time.Date(eventDate.Year()-dto.AgeFrom, time.December, 31, 23, 59, 59, 0, eventDate.Location())
+	}
+	if dto.ToRaceDate {
+		dateFrom = time.Date(eventDate.Year()-dto.AgeTo-1, eventDate.Month(), eventDate.Day()+1, 0, 0, 0, 0, eventDate.Location())
+	} else {
+		dateFrom = time.Date(eventDate.Year()-dto.AgeTo, time.January, 1, 0, 0, 0, 0, eventDate.Location())
+	}
+	return dateFrom, dateTo
+}
 
-// func (c *Category) BirthDateFrom(dob time.Time) time.Time {
-// 	return c.DateFrom.AddDate(-c.AgeFrom, 0, 0)
-// }
-
-// func (c *Category) BirthDateTo(dob time.Time) time.Time {
-// 	return c.DateTo.AddDate(-c.AgeTo, 0, 0)
-// }
+func (c Category) String() string {
+	return fmt.Sprintf(
+		"Category {\n"+
+			"  ID: %s\n"+
+			"  RaceID: %s\n"+
+			"  EventID: %s\n"+
+			"  Name: %q\n"+
+			"  Gender: %s\n"+
+			"  Age Range: %d - %d years\n"+
+			"  Date Range: %s - %s\n"+
+			"}",
+		c.ID,
+		c.RaceID,
+		c.EventID,
+		c.Name,
+		c.Gender,
+		c.AgeFrom, c.AgeTo,
+		c.DateFrom.Format(time.DateOnly), c.DateTo.Format(time.DateOnly),
+	)
+}

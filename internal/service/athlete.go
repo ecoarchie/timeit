@@ -35,16 +35,14 @@ type AthleteRepo interface {
 const TimeFormatDDMMYYYY = "02.01.2006"
 
 type AthleteService struct {
-	log   *logger.Logger
-	repo  AthleteRepo
-	cache *RaceCache
+	log  *logger.Logger
+	repo AthleteRepo
 }
 
-func NewAthleteService(logger *logger.Logger, repo AthleteRepo, cache *RaceCache) *AthleteService {
+func NewAthleteService(logger *logger.Logger, repo AthleteRepo) *AthleteService {
 	return &AthleteService{
-		log:   logger,
-		repo:  repo,
-		cache: cache,
+		log:  logger,
+		repo: repo,
 	}
 }
 
@@ -148,6 +146,7 @@ func (as *AthleteService) DeleteAthletesForRace(ctx context.Context, raceID, eve
 }
 
 func (as *AthleteService) FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest {
+	// FIXME get rid of cache
 	eventsMap := as.cache.GetEventNameIDforRace(raceID)
 	fmt.Println("events Map: ", eventsMap)
 	waves := as.cache.GetWavesForRace(raceID)

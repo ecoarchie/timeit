@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
@@ -9,12 +10,12 @@ import (
 )
 
 type Wave struct {
-	ID         uuid.UUID `json:"wave_id"`
-	RaceID     uuid.UUID `json:"race_id"`
-	EventID    uuid.UUID `json:"event_id"`
-	Name       string    `json:"wave_name"`
-	StartTime  time.Time `json:"wave_start_time"`
-	IsLaunched bool      `json:"is_launched"`
+	ID         uuid.UUID
+	RaceID     uuid.UUID
+	EventID    uuid.UUID
+	Name       string
+	StartTime  time.Time
+	IsLaunched bool
 }
 
 type WaveStart struct {
@@ -32,4 +33,23 @@ func NewWave(dto *dto.WaveDTO, v *validator.Validator) *Wave {
 		StartTime:  startTime,
 		IsLaunched: dto.IsLaunched,
 	}
+}
+
+func (w Wave) String() string {
+	return fmt.Sprintf(
+		"Wave {\n"+
+			"  ID: %s\n"+
+			"  RaceID: %s\n"+
+			"  EventID: %s\n"+
+			"  Name: %q\n"+
+			"  StartTime: %s\n"+
+			"  IsLaunched: %t\n"+
+			"}",
+		w.ID,
+		w.RaceID,
+		w.EventID,
+		w.Name,
+		w.StartTime.Format(time.DateTime),
+		w.IsLaunched,
+	)
 }

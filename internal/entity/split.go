@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
@@ -17,16 +18,16 @@ const (
 )
 
 type Split struct {
-	ID                 uuid.UUID     `json:"split_id"`
-	RaceID             uuid.UUID     `json:"race_id"`
-	EventID            uuid.UUID     `json:"event_id"`
-	Name               string        `json:"split_name"`
-	Type               SplitType     `json:"split_type"`
-	DistanceFromStart  int           `json:"distance_from_start"`
-	TimeReaderID       uuid.UUID     `json:"time_reader_id"`
-	MinTime            time.Duration `json:"min_time_sec"`
-	MaxTime            time.Duration `json:"max_time_sec"`
-	MinLapTime         time.Duration `json:"min_lap_time_sec"`
+	ID                 uuid.UUID
+	RaceID             uuid.UUID
+	EventID            uuid.UUID
+	Name               string
+	Type               SplitType
+	DistanceFromStart  int
+	TimeReaderID       uuid.UUID
+	MinTime            time.Duration
+	MaxTime            time.Duration
+	MinLapTime         time.Duration
 	PreviousLapSplitID uuid.NullUUID
 }
 
@@ -92,4 +93,48 @@ func (s *Split) IsValidForRecord(waveStart time.Time, tod time.Time, prev *Athle
 		}
 	}
 	return true
+}
+
+func (s Split) String() string {
+	return fmt.Sprintf(
+		"Split {\n"+
+			"  ID: %s\n"+
+			"  RaceID: %s\n"+
+			"  EventID: %s\n"+
+			"  Name: %q\n"+
+			"  Type: %s\n"+
+			"  DistanceFromStart: %d meters\n"+
+			"  TimeReaderID: %s\n"+
+			"  MinTime: %s\n"+
+			"  MaxTime: %s\n"+
+			"  MinLapTime: %s\n"+
+			"  PreviousLapSplitID: %s\n"+
+			"}",
+		s.ID,
+		s.RaceID,
+		s.EventID,
+		s.Name,
+		s.Type,
+		s.DistanceFromStart,
+		s.TimeReaderID,
+		formatDuration(s.MinTime),
+		formatDuration(s.MaxTime),
+		formatDuration(s.MinLapTime),
+		formatNullUUID(s.PreviousLapSplitID),
+	)
+}
+
+func formatDuration(d time.Duration) string {
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+func formatNullUUID(n uuid.NullUUID) string {
+	if !n.Valid {
+		return "null"
+	}
+	return n.UUID.String()
 }

@@ -1,7 +1,9 @@
 package entity
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/ecoarchie/timeit/internal/controller/httpv1/dto"
@@ -25,7 +27,6 @@ func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww 
 	eventDate, _ := time.Parse(time.RFC3339, e.EventDate)
 
 	// Splits
-	// FIXME configure lap splits
 	v.Check(len(ss) != 0, "splits", "event must have at least one split")
 	if !v.Valid() {
 		return nil
@@ -70,7 +71,7 @@ func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww 
 	if len(cc) > 0 {
 		var categoryNames []string
 		for _, c := range cc {
-			cat := NewCategory(c, v)
+			cat := NewCategory(c, eventDate, v)
 			if !v.Valid() {
 				return nil
 			}
@@ -80,7 +81,7 @@ func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww 
 		v.Check(validator.Unique(categoryNames), "categories", "must have unique names for event")
 	}
 
-	return &Event{
+	event := &Event{
 		ID:               e.ID,
 		RaceID:           e.RaceID,
 		Name:             e.Name,
@@ -90,14 +91,64 @@ func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww 
 		Waves:            waves,
 		Categories:       categories,
 	}
+	event.AssignLapToSplits()
+	fmt.Println(event)
+	return event
+}
+
+type (
+	SplitID  = uuid.UUID
+	ReaderID = uuid.UUID
+)
+
+func (e *Event) AssignLapToSplits() {
+	slices.SortFunc(e.Splits, func(a, b *Split) int {
+		return cmp.Compare(a.DistanceFromStart, b.DistanceFromStart)
+	})
+	m := make(map[ReaderID]SplitID, len(e.Splits))
+	for _, s := range e.Splits {
+		if _, ok := m[s.TimeReaderID]; ok {
+			s.PreviousLapSplitID = uuid.NullUUID{
+				UUID:  m[s.TimeReaderID],
+				Valid: true,
+			}
+			m[s.TimeReaderID] = s.ID
+		}
+	}
 }
 
 func (e Event) String() string {
-	return fmt.Sprintf(`{
-	ID: %s,
-	RaceID: %s,
-	Name: %s,
-	DistanceInMeters: %d,
-	EventDate: %s
-}`, e.ID.String(), e.RaceID.String(), e.Name, e.DistanceInMeters, e.EventDate.String())
+	return fmt.Sprintf(
+		"Event {\n"+
+			"  ID: %s\n"+
+			"  RaceID: %s\n"+
+			"  Name: %q\n"+
+			"  Distance: %d meters\n"+
+			"  Event Date: %s\n"+
+			"  Splits: %s\n"+
+			"  Waves: %s\n"+
+			"  Categories: %s\n"+
+			"}",
+		e.ID,
+		e.RaceID,
+		e.Name,
+		e.DistanceInMeters,
+		e.EventDate.Format(time.DateOnly),
+		formatSlice(e.Splits),
+		formatSlice(e.Waves),
+		formatSlice(e.Categories),
+	)
+}
+
+func formatSlice[T fmt.Stringer](items []T) string {
+	if len(items) == 0 {
+		return "[]"
+	}
+
+	result := "[\n"
+	for _, item := range items {
+		result += fmt.Sprintf("    %s,\n", item.String())
+	}
+	result += "  ]"
+	return result
 }
