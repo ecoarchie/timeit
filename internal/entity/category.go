@@ -19,15 +19,15 @@ const (
 )
 
 type Category struct {
-	ID       uuid.UUID
-	RaceID   uuid.UUID
-	EventID  uuid.UUID
-	Name     string
-	Gender   CategoryGender
-	AgeFrom  int
-	DateFrom time.Time
-	AgeTo    int
-	DateTo   time.Time
+	ID       uuid.UUID      `json:"category_id"`
+	RaceID   uuid.UUID      `json:"race_id"`
+	EventID  uuid.UUID      `json:"event_id"`
+	Name     string         `json:"category_name"`
+	Gender   CategoryGender `json:"gender"`
+	AgeFrom  int            `json:"age_from"`
+	DateFrom time.Time      `json:"date_from"`
+	AgeTo    int            `json:"age_to"`
+	DateTo   time.Time      `json:"date_to"`
 }
 
 func NewCategory(dto *dto.CategoryDTO, eventDate time.Time, v *validator.Validator) *Category {

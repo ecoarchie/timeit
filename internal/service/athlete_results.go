@@ -20,7 +20,6 @@ type AthleteResultsService struct {
 	RaceConfigurator
 	AthleteManager
 	ResultsManager
-	Cache *RaceCache
 }
 
 func NewAthleteResultsService(r RaceConfigurator, a AthleteManager, res ResultsManager) *AthleteResultsService {

@@ -158,7 +158,7 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.Race, trs []
 	return tx.Commit(ctx)
 }
 
-func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceConfig, error) {
+func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceModel, error) {
 	r, err := rr.q.GetRaceInfo(ctx, raceID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -166,14 +166,14 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 		}
 		return nil, err
 	}
-	raceCfg := &entity.RaceConfig{
+	raceCfg := &entity.RaceModel{
 		Race: &entity.Race{
 			ID:       r.ID,
 			Name:     r.RaceName,
 			Timezone: r.Timezone,
 		},
 		TimeReaders: []*entity.TimeReader{},
-		Events:      []*entity.EventConfig{},
+		Events:      []*entity.Event{},
 	}
 
 	// get all time readers for race
@@ -196,17 +196,15 @@ func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 		return nil, err
 	}
 	for _, e := range events {
-		event := &entity.EventConfig{
-			Event: &entity.Event{
-				ID:               e.ID,
-				RaceID:           e.RaceID,
-				Name:             e.EventName,
-				DistanceInMeters: int(e.DistanceInMeters),
-				EventDate:        e.EventDate.Time,
-			},
-			Splits:     []*entity.Split{},
-			Waves:      []*entity.Wave{},
-			Categories: []*entity.Category{},
+		event := &entity.Event{
+			ID:               e.ID,
+			RaceID:           e.RaceID,
+			Name:             e.EventName,
+			DistanceInMeters: int(e.DistanceInMeters),
+			EventDate:        e.EventDate.Time,
+			Splits:           []*entity.Split{},
+			Waves:            []*entity.Wave{},
+			Categories:       []*entity.Category{},
 		}
 
 		// get splits for event

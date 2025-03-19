@@ -33,7 +33,7 @@ func IsIANATimezone(tz string) bool {
 }
 
 type RaceModel struct {
-	*Race
-	TimeReaders []*TimeReader
-	Events      []*Event
+	*Race       `json:"race"`
+	TimeReaders []*TimeReader `json:"time_readers"`
+	Events      []*Event      `json:"events"`
 }

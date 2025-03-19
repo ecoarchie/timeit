@@ -22,7 +22,7 @@ type RaceConfigurator interface {
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
 	CreateRace(ctx context.Context, req *dto.RaceDTO, v *validator.Validator) (*entity.Race, error)
 	DeleteRace(ctx context.Context, raceID string) error
-	GetRaceConfig(ctx context.Context, raceID string) (*dto.RaceConfig, error)
+	GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceModel, error)
 	GetWavesForRace(ctx context.Context, raceID string) ([]*entity.Wave, error)
 	StartWave(ctx context.Context, raceID string, startInfo entity.WaveStart) (time.Time, bool, error)
 	GetEventIDsWithWaveStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
@@ -30,7 +30,7 @@ type RaceConfigurator interface {
 
 type RaceRepo interface {
 	SaveRaceConfig(ctx context.Context, r *entity.Race, trs []*entity.TimeReader, ee []*entity.Event) error
-	GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*dto.RaceConfig, error)
+	GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceModel, error)
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
 	SaveRaceInfo(ctx context.Context, race *entity.Race) error
 	SaveWave(ctx context.Context, wave *entity.Wave) error
@@ -72,7 +72,7 @@ func (rs RaceService) CreateRace(ctx context.Context, req *dto.RaceDTO, v *valid
 	return r, nil
 }
 
-func (rs RaceService) GetRaceConfig(ctx context.Context, raceID string) (*dto.RaceConfig, error) {
+func (rs RaceService) GetRaceConfig(ctx context.Context, raceID string) (*entity.RaceModel, error) {
 	uuID, err := uuid.Parse(raceID)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing race UUID")

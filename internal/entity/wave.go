@@ -10,12 +10,12 @@ import (
 )
 
 type Wave struct {
-	ID         uuid.UUID
-	RaceID     uuid.UUID
-	EventID    uuid.UUID
-	Name       string
-	StartTime  time.Time
-	IsLaunched bool
+	ID         uuid.UUID `json:"wave_id"`
+	RaceID     uuid.UUID `json:"race_id"`
+	EventID    uuid.UUID `json:"event_id"`
+	Name       string    `json:"wave_name"`
+	StartTime  time.Time `json:"start_time"`
+	IsLaunched bool      `json:"is_launched"`
 }
 
 type WaveStart struct {

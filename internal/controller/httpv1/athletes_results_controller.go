@@ -3,7 +3,6 @@ package httpv1
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/service"
@@ -133,8 +132,8 @@ func (p athletesResultsRoutes) checkHeadersCSV(w http.ResponseWriter, r *http.Re
 }
 
 func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.Request) {
-	rID := chi.URLParam(r, "race_id")
-	raceID, _ := uuid.Parse(rID)
+	// rID := chi.URLParam(r, "race_id")
+	// raceID, _ := uuid.Parse(rID)
 	fileToken := chi.URLParam(r, "file_token")
 	var headers struct {
 		Headers []string `json:"headers"`
@@ -145,17 +144,17 @@ func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.
 		return
 	}
 	par := service.NewAthleteImporterCSV(fileToken, ";")
-	athletes, err := par.ReadCSV(headers.Headers)
+	_, err = par.ReadCSV(headers.Headers)
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
 	}
 	// FIXME
-	athletReqs := p.service.FromCSVtoRequestAthlete(raceID, athletes)
-	for _, a := range athletReqs {
-		_, err := p.service.CreateAthlete(r.Context(), a)
-		if err != nil {
-			p.logger.Error("error create athlete with bib from csv: ", strconv.Itoa(a.Bib), err)
-		}
-	}
+	// athletReqs := p.service.FromCSVtoRequestAthlete(raceID, athletes)
+	// for _, a := range athletReqs {
+	// 	_, err := p.service.CreateAthlete(r.Context(), a)
+	// 	if err != nil {
+	// 		p.logger.Error("error create athlete with bib from csv: ", strconv.Itoa(a.Bib), err)
+	// 	}
+	// }
 }

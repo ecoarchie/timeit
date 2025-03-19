@@ -12,14 +12,14 @@ import (
 )
 
 type Event struct {
-	ID               uuid.UUID `json:"event_id"`
-	RaceID           uuid.UUID `json:"race_id"`
-	Name             string    `json:"event_name"`
-	DistanceInMeters int       `json:"distance_in_meters"`
-	EventDate        time.Time `json:"event_date"`
-	Splits           []*Split
-	Waves            []*Wave
-	Categories       []*Category
+	ID               uuid.UUID   `json:"event_id"`
+	RaceID           uuid.UUID   `json:"race_id"`
+	Name             string      `json:"event_name"`
+	DistanceInMeters int         `json:"distance_in_meters"`
+	EventDate        time.Time   `json:"event_date"`
+	Splits           []*Split    `json:"splits"`
+	Waves            []*Wave     `json:"waves"`
+	Categories       []*Category `json:"categories"`
 }
 
 func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww []*dto.WaveDTO, cc []*dto.CategoryDTO, v *validator.Validator) *Event {

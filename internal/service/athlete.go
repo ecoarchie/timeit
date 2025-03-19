@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -17,7 +16,7 @@ type AthleteManager interface {
 	UpdateAthlete(ctx context.Context, req entity.AthleteUpdateRequest) (*entity.Athlete, error)
 	DeleteAthlete(ctx context.Context, athleteID uuid.UUID) error
 	DeleteAthletesForRace(ctx context.Context, raceID, eventID uuid.UUID) error
-	FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest
+	// FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest
 }
 
 type AthleteRepo interface {
@@ -145,45 +144,45 @@ func (as *AthleteService) DeleteAthletesForRace(ctx context.Context, raceID, eve
 	return nil
 }
 
-func (as *AthleteService) FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest {
-	// FIXME get rid of cache
-	eventsMap := as.cache.GetEventNameIDforRace(raceID)
-	fmt.Println("events Map: ", eventsMap)
-	waves := as.cache.GetWavesForRace(raceID)
-	fmt.Println("waves ", waves)
-	var res []entity.AthleteCreateRequest
-	for _, a := range data {
-		eID := eventsMap[a.Event]
-		var wID uuid.UUID
-		for _, w := range waves {
-			if w.EventID == eID {
-				if a.Wave == "" {
-					wID = w.ID
-					break
-				} else if w.Name == a.Wave {
-					wID = w.ID
-				}
-			}
-		}
-		dob, _ := time.Parse(TimeFormatDDMMYYYY, a.DateOfBirth)
-		r := entity.AthleteCreateRequest{
-			RaceID:      raceID,
-			EventID:     eID,
-			WaveID:      wID,
-			Bib:         a.Bib,
-			Chip:        a.Chip,
-			FirstName:   a.FirstName,
-			LastName:    a.LastName,
-			Gender:      entity.CategoryGender(a.Gender),
-			DateOfBirth: dob,
-			CategoryID: uuid.NullUUID{
-				UUID:  uuid.UUID{},
-				Valid: false,
-			},
-			Phone:    a.Phone,
-			Comments: a.Comments,
-		}
-		res = append(res, r)
-	}
-	return res
-}
+// func (as *AthleteService) FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest {
+// 	// FIXME get rid of cache
+// 	eventsMap := as.cache.GetEventNameIDforRace(raceID)
+// 	fmt.Println("events Map: ", eventsMap)
+// 	waves := as.cache.GetWavesForRace(raceID)
+// 	fmt.Println("waves ", waves)
+// 	var res []entity.AthleteCreateRequest
+// 	for _, a := range data {
+// 		eID := eventsMap[a.Event]
+// 		var wID uuid.UUID
+// 		for _, w := range waves {
+// 			if w.EventID == eID {
+// 				if a.Wave == "" {
+// 					wID = w.ID
+// 					break
+// 				} else if w.Name == a.Wave {
+// 					wID = w.ID
+// 				}
+// 			}
+// 		}
+// 		dob, _ := time.Parse(TimeFormatDDMMYYYY, a.DateOfBirth)
+// 		r := entity.AthleteCreateRequest{
+// 			RaceID:      raceID,
+// 			EventID:     eID,
+// 			WaveID:      wID,
+// 			Bib:         a.Bib,
+// 			Chip:        a.Chip,
+// 			FirstName:   a.FirstName,
+// 			LastName:    a.LastName,
+// 			Gender:      entity.CategoryGender(a.Gender),
+// 			DateOfBirth: dob,
+// 			CategoryID: uuid.NullUUID{
+// 				UUID:  uuid.UUID{},
+// 				Valid: false,
+// 			},
+// 			Phone:    a.Phone,
+// 			Comments: a.Comments,
+// 		}
+// 		res = append(res, r)
+// 	}
+// 	return res
+// }

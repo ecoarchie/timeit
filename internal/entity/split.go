@@ -18,17 +18,17 @@ const (
 )
 
 type Split struct {
-	ID                 uuid.UUID
-	RaceID             uuid.UUID
-	EventID            uuid.UUID
-	Name               string
-	Type               SplitType
-	DistanceFromStart  int
-	TimeReaderID       uuid.UUID
-	MinTime            time.Duration
-	MaxTime            time.Duration
-	MinLapTime         time.Duration
-	PreviousLapSplitID uuid.NullUUID
+	ID                 uuid.UUID     `json:"split_id"`
+	RaceID             uuid.UUID     `json:"race_id"`
+	EventID            uuid.UUID     `json:"event_id"`
+	Name               string        `json:"split_name"`
+	Type               SplitType     `json:"split_type"`
+	DistanceFromStart  int           `json:"distance_from_start"`
+	TimeReaderID       uuid.UUID     `json:"time_reader_id"`
+	MinTime            time.Duration `json:"min_time"`
+	MaxTime            time.Duration `json:"max_time"`
+	MinLapTime         time.Duration `json:"min_lap_time"`
+	PreviousLapSplitID uuid.NullUUID `json:"previous_lap_split"`
 }
 
 func NewSplit(dto *dto.SplitDTO, trs []*dto.TimeReaderDTO, v *validator.Validator) *Split {

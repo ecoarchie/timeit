@@ -1,19 +1,16 @@
 package service
 
-// import (
-// 	"sync"
+import (
+	"github.com/google/uuid"
+)
 
-// 	"github.com/ecoarchie/timeit/internal/entity"
-// 	"github.com/google/uuid"
-// )
-
-// type (
-// 	RaceID       = uuid.UUID
-// 	EventID      = uuid.UUID
-// 	SplitID      = uuid.UUID
-// 	WaveID       = uuid.UUID
-// 	TimeReaderID = uuid.UUID
-// )
+type (
+	RaceID       = uuid.UUID
+	EventID      = uuid.UUID
+	SplitID      = uuid.UUID
+	WaveID       = uuid.UUID
+	TimeReaderID = uuid.UUID
+)
 
 // type RaceCache struct {
 // 	Races       map[RaceID]*entity.Race
