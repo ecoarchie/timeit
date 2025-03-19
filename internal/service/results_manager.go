@@ -16,6 +16,7 @@ import (
 type ResultsManager interface {
 	GetResultsForEvent(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error)
 	CalculateRanks(ctx context.Context, eventResults []*entity.AthleteSplit) ([]*entity.AthleteSplit, error)
+	GetResults(ctx context.Context, raceID uuid.UUID) (map[EventID][]*entity.AthleteSplit, error)
 }
 
 type ResultsService struct {
@@ -31,6 +32,40 @@ func NewResultsService(repo AthleteRepo) *ResultsService {
 // TODO
 func (rs ResultsService) ResultForAthlete(id uuid.UUID) *entity.AthleteSplit {
 	return nil
+}
+
+func (rs *ResultsService) RecalculateAthleteResult(ctx context.Context, raceID uuid.UUID) error {
+	return nil
+}
+
+func (rs *ResultsService) GetResults(ctx context.Context, raceID uuid.UUID) (map[EventID][]*entity.AthleteSplit, error) {
+	IDs, err := rs.AthleteRepo.GetEventIDsWithWavesStarted(ctx, raceID)
+	if err != nil {
+		return nil, err
+	}
+	if len(IDs) == 0 {
+		return nil, nil
+	}
+	// FIXME
+	m := make(map[EventID][]*entity.AthleteSplit)
+	for _, eventID := range IDs {
+		eventResults, err := rs.GetResultsForEvent(ctx, raceID, eventID)
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range eventResults {
+			if e == nil {
+				fmt.Println("WE HAVE NIL HERE")
+			}
+		}
+		res, err := rs.CalculateRanks(ctx, eventResults)
+		if err != nil {
+			return nil, err
+		}
+		m[eventID] = res
+		// fmt.Println("Res: ", res)
+	}
+	return m, nil
 }
 
 func (rs ResultsService) CalculateRanks(ctx context.Context, eventResults []*entity.AthleteSplit) ([]*entity.AthleteSplit, error) {

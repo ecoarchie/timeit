@@ -41,14 +41,12 @@ func Run(cfg *config.Config) {
 	athleteService := service.NewAthleteService(logger, athleteRepo)
 	resultsService := service.NewResultsService(athleteRepo)
 
-	pRes := service.NewAthleteResultsService(raceService, athleteService, resultsService)
-
 	// Routers
 	logger.Info("Creating routers")
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 	httpv1.NewRaceRouter(router, logger, raceService)
-	httpv1.NewAthleteResultsRouter(router, logger, pRes)
+	httpv1.NewAthleteResultsRouter(router, logger, athleteService, resultsService)
 	httpServer := httpserver.New(router, httpserver.Port(cfg.HTTP.Port))
 
 	logger.Info("Starting server at", "port", cfg.HTTP.Port)

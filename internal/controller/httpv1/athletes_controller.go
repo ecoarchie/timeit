@@ -1,7 +1,6 @@
 package httpv1
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -11,14 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type athletesResultsRoutes struct {
-	service service.AthleteResultsManager
+type athletesRoutes struct {
+	service service.AthleteManager
 	logger  *logger.Logger
 }
 
-func newAthletesResultsRoutes(logger *logger.Logger, service service.AthleteResultsManager) http.Handler {
+func newAthletesRoutes(logger *logger.Logger, service service.AthleteManager) http.Handler {
 	logger.Info("creating new race routes")
-	rr := &athletesResultsRoutes{
+	rr := &athletesRoutes{
 		service: service,
 		logger:  logger,
 	}
@@ -29,26 +28,10 @@ func newAthletesResultsRoutes(logger *logger.Logger, service service.AthleteResu
 	r.Post("/csv/{file_token}", rr.createBulkFromCSV)
 	r.Delete("/{athlete_id}", rr.deleteAthleteByID)
 	r.Delete("/", rr.deleteAthletesForRace)
-	r.Get("/results", rr.getResults)
 	return r
 }
 
-func (p athletesResultsRoutes) getResults(w http.ResponseWriter, r *http.Request) {
-	rID := chi.URLParam(r, "race_id")
-	raceID, _ := uuid.Parse(rID)
-	res, err := p.service.GetResults(context.Background(), raceID)
-	if err != nil {
-		p.logger.Error("Calculate results: ", "err", err)
-		serverErrorResponse(w, err)
-		return
-	}
-	err = writeJSON(w, http.StatusOK, res, nil)
-	if err != nil {
-		serverErrorResponse(w, err)
-	}
-}
-
-func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Request) {
+func (p athletesRoutes) athleteByID(w http.ResponseWriter, r *http.Request) {
 	athleteID := chi.URLParam(r, "athlete_id")
 	pUUID, _ := uuid.Parse(athleteID)
 	a := p.service.GetAthleteByID(r.Context(), pUUID)
@@ -62,7 +45,7 @@ func (p athletesResultsRoutes) athleteByID(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
+func (p athletesRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Request) {
 	var req entity.AthleteCreateRequest
 	err := readJSON(w, r, &req)
 	if err != nil {
@@ -83,7 +66,7 @@ func (p athletesResultsRoutes) createSingleAthlete(w http.ResponseWriter, r *htt
 	}
 }
 
-func (p athletesResultsRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.Request) {
+func (p athletesRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.Request) {
 	athleteID := chi.URLParam(r, "athlete_id")
 	aUUID, _ := uuid.Parse(athleteID)
 	err := p.service.DeleteAthlete(r.Context(), aUUID)
@@ -95,7 +78,7 @@ func (p athletesResultsRoutes) deleteAthleteByID(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 }
 
-func (p athletesResultsRoutes) deleteAthletesForRace(w http.ResponseWriter, r *http.Request) {
+func (p athletesRoutes) deleteAthletesForRace(w http.ResponseWriter, r *http.Request) {
 	rID := chi.URLParam(r, "race_id")
 	raceID, _ := uuid.Parse(rID)
 	eID := r.URL.Query().Get("event_id")
@@ -108,7 +91,7 @@ func (p athletesResultsRoutes) deleteAthletesForRace(w http.ResponseWriter, r *h
 	w.WriteHeader(http.StatusOK)
 }
 
-func (p athletesResultsRoutes) checkHeadersCSV(w http.ResponseWriter, r *http.Request) {
+func (p athletesRoutes) checkHeadersCSV(w http.ResponseWriter, r *http.Request) {
 	token, err := service.StoreTmpFile(r)
 	if err != nil {
 		serverErrorResponse(w, err)
@@ -131,7 +114,7 @@ func (p athletesResultsRoutes) checkHeadersCSV(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (p athletesResultsRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.Request) {
+func (p athletesRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.Request) {
 	// rID := chi.URLParam(r, "race_id")
 	// raceID, _ := uuid.Parse(rID)
 	fileToken := chi.URLParam(r, "file_token")

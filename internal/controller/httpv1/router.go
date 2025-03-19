@@ -30,8 +30,9 @@ func NewRaceRouter(handler *chi.Mux, logger *logger.Logger, raceService service.
 	handler.Mount("/races", newRaceRoutes(logger, raceService))
 }
 
-func NewAthleteResultsRouter(handler *chi.Mux, logger *logger.Logger, manager service.AthleteResultsManager) {
-	handler.Mount("/races/{race_id}/athletes", newAthletesResultsRoutes(logger, manager))
+func NewAthleteResultsRouter(handler *chi.Mux, logger *logger.Logger, amanager service.AthleteManager, rmanager service.ResultsManager) {
+	handler.Mount("/races/{race_id}/athletes", newAthletesRoutes(logger, amanager))
+	handler.Mount("/races/{race_id}/results", newResultsRoutes(logger, rmanager))
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {

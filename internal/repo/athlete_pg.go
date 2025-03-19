@@ -29,6 +29,7 @@ type ParticipantQuery interface {
 	GetEventAthleteRecordsC(ctx context.Context, arg database.GetEventAthleteRecordsCParams) ([]database.GetEventAthleteRecordsCRow, error)
 	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
 	CreateAthleteSplits(ctx context.Context, arg database.CreateAthleteSplitsParams) error
+	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -98,6 +99,10 @@ func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) err
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (ar *AthleteRepoPG) GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error) {
+	return ar.q.GetEventIDsWithWavesStarted(ctx, raceID)
 }
 
 func (ar *AthleteRepoPG) GetCategoryFor(ctx context.Context, p *entity.Athlete) (uuid.NullUUID, bool, error) {
