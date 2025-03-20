@@ -145,32 +145,32 @@ func calculateRanks(aSplits []*entity.AthleteSplit, compf func(a, b *entity.Athl
 	}
 }
 
-func calculateNetRanks(splits []*entity.AthleteSplit, compf func(a, b *entity.AthleteSplit) int) {
-	resGroupRank := make(map[string]int)
-	slices.SortFunc(splits, compf)
-	for _, s := range splits {
-		if s == nil {
-			continue
-		}
-		oGroup := fmt.Sprintf("%s-%s", "overall", s.SplitID.String())
-		cGroup := fmt.Sprintf("%s-%s", s.CategoryID.UUID.String(), s.SplitID.String())
-		gGroup := fmt.Sprintf("%s-%s", s.Gender, s.SplitID.String())
+// func calculateNetRanks(splits []*entity.AthleteSplit, compf func(a, b *entity.AthleteSplit) int) {
+// 	resGroupRank := make(map[string]int)
+// 	slices.SortFunc(splits, compf)
+// 	for _, s := range splits {
+// 		if s == nil {
+// 			continue
+// 		}
+// 		oGroup := fmt.Sprintf("%s-%s", "overall", s.SplitID.String())
+// 		cGroup := fmt.Sprintf("%s-%s", s.CategoryID.UUID.String(), s.SplitID.String())
+// 		gGroup := fmt.Sprintf("%s-%s", s.Gender, s.SplitID.String())
 
-		// calculate rank for overall
-		resGroupRank[oGroup]++
-		s.NetRankOverall = resGroupRank[oGroup]
+// 		// calculate rank for overall
+// 		resGroupRank[oGroup]++
+// 		s.NetRankOverall = resGroupRank[oGroup]
 
-		// calculate rank for category
-		if s.CategoryID.Valid {
-			resGroupRank[cGroup]++
-			s.NetRankCategory = resGroupRank[cGroup]
-		}
+// 		// calculate rank for category
+// 		if s.CategoryID.Valid {
+// 			resGroupRank[cGroup]++
+// 			s.NetRankCategory = resGroupRank[cGroup]
+// 		}
 
-		// calculate rank for gender
-		resGroupRank[gGroup]++
-		s.NetRankGender = resGroupRank[gGroup]
-	}
-}
+// 		// calculate rank for gender
+// 		resGroupRank[gGroup]++
+// 		s.NetRankGender = resGroupRank[gGroup]
+// 	}
+// }
 
 // TODO
 func (rs ResultsService) GetResultsForEvent(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/ecoarchie/timeit/pkg/logger"
 	"github.com/ecoarchie/timeit/pkg/validator"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type raceRoutes struct {
@@ -35,22 +36,21 @@ func newRaceRoutes(log *logger.Logger, conf service.RaceConfigurator) http.Handl
 }
 
 func (rr *raceRoutes) startWave(w http.ResponseWriter, r *http.Request) {
-	v := validator.New()
 	rID := chi.URLParam(r, "race_id")
-	// wID := chi.URLParam(r, "wave_id")
 	var waveStart entity.WaveStart
 	err := readJSON(w, r, &waveStart)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	v.Check(rID != "" && validator.IsUUID(rID), "race_id", "must be provided and be valid uuid")
-	v.Check(waveStart.WaveID.String() != "" && validator.IsUUID(waveStart.WaveID.String()), "wave_id", "must be provided and be valid uuid")
+	v := validator.New()
+	v.Check(validator.IsUUID(rID), "race_id", "must be provided and be valid uuid")
+	v.Check(validator.IsUUID(waveStart.WaveID.String()), "wave_id", "must be provided and be valid uuid")
 	if !v.Valid() {
-		errorResponse(w, http.StatusBadRequest, v.Errors)
+		failedValidationResponse(w, v.Errors)
 		return
 	}
-	startTime, waveFound, err := rr.conf.StartWave(context.Background(), rID, waveStart)
+	startTime, waveFound, err := rr.conf.StartWave(context.Background(), uuid.MustParse(rID), waveStart)
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
@@ -66,15 +66,16 @@ func (rr *raceRoutes) startWave(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rr *raceRoutes) getWavesForRace(w http.ResponseWriter, r *http.Request) {
-	v := validator.New()
 	rID := chi.URLParam(r, "race_id")
+
+	v := validator.New()
 	v.Check(rID != "", "race_id", "must be provided ")
 	v.Check(validator.IsUUID(rID), "race_id", "must be valid UUID")
 	if !v.Valid() {
-		errorResponse(w, http.StatusBadRequest, v.Errors)
+		failedValidationResponse(w, v.Errors)
 		return
 	}
-	waves, err := rr.conf.GetWavesForRace(context.Background(), rID)
+	waves, err := rr.conf.GetWavesForRace(context.Background(), uuid.MustParse(rID))
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
@@ -88,7 +89,13 @@ func (rr *raceRoutes) getWavesForRace(w http.ResponseWriter, r *http.Request) {
 
 func (rr *raceRoutes) deleteRace(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "race_id")
-	err := rr.conf.DeleteRace(context.Background(), id)
+	v := *validator.New()
+	v.Check(validator.IsUUID(id), "race_id", "must be valid uuid")
+	if !v.Valid() {
+		failedValidationResponse(w, v.Errors)
+		return
+	}
+	err := rr.conf.DeleteRace(context.Background(), uuid.MustParse(id))
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
@@ -97,7 +104,7 @@ func (rr *raceRoutes) deleteRace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rr *raceRoutes) getRaces(w http.ResponseWriter, r *http.Request) {
-	races, err := rr.conf.GetRaces(r.Context())
+	races, err := rr.conf.GetRaces(context.Background())
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
@@ -111,7 +118,13 @@ func (rr *raceRoutes) getRaces(w http.ResponseWriter, r *http.Request) {
 
 func (rr *raceRoutes) getRaceConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "race_id")
-	cfg, err := rr.conf.GetRaceConfig(r.Context(), id)
+	v := *validator.New()
+	v.Check(validator.IsUUID(id), "race_id", "must be valid uuid")
+	if !v.Valid() {
+		failedValidationResponse(w, v.Errors)
+		return
+	}
+	cfg, err := rr.conf.GetRaceConfig(context.Background(), uuid.MustParse(id))
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
@@ -134,10 +147,15 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := validator.New()
-	race, err := rr.conf.CreateRace(r.Context(), dto, v)
+	race, err := rr.conf.CreateRace(context.Background(), dto, v)
 	if err != nil {
 		rr.log.Error("error creating race", err)
 		serverErrorResponse(w, err)
+		return
+	}
+	if !v.Valid() {
+		rr.log.Error("error validating race config to save")
+		failedValidationResponse(w, v.Errors)
 		return
 	}
 	writeJSON(w, http.StatusOK, race, nil)
@@ -152,15 +170,16 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	ctx := context.Background()
 
 	v := validator.New()
-	raceConfig.Validate(r.Context(), v)
+	raceConfig.Validate(ctx, v)
 
 	if !v.Valid() {
 		failedValidationResponse(w, v.Errors)
 		return
 	}
-	err = rr.conf.SaveRaceConfig(r.Context(), raceConfig, v)
+	err = rr.conf.SaveRaceConfig(ctx, raceConfig, v)
 	if err != nil {
 		mes := "error saving race config"
 		rr.log.Error(mes, err)

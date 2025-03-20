@@ -26,6 +26,7 @@ go.work.sum
 
 # examples
 example.json
+test.json
 
 # temp files
 tmp

@@ -158,6 +158,23 @@ func (rr *RaceRepoPG) SaveRaceConfig(ctx context.Context, r *entity.Race, trs []
 	return tx.Commit(ctx)
 }
 
+// func (rr *RaceRepoPG) GetRaceInfoForCSV(ctx context.Context, raceID uuid.UUID) ([]*entity.Event, []*entity.Wave, []*entity.Category, error) {
+// 	events, err := rr.q.GetEventsForRace(ctx, raceID)
+// 	if err != nil {
+// 		return nil, nil, nil, err
+// 	}
+// 	waves, err := rr.q.GetWavesForRace(ctx, raceID)
+// 	if err != nil {
+// 		return nil, nil, nil, err
+// 	}
+
+// 	categories := []*entity.Category{}
+// 	for _, e := range events {
+// 		cats, err := rr.q.GetCategoriesForEvent(ctx, e.ID)
+// 		categories = append(categories, cats)
+// 	}
+// }
+
 func (rr *RaceRepoPG) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*entity.RaceModel, error) {
 	r, err := rr.q.GetRaceInfo(ctx, raceID)
 	if err != nil {

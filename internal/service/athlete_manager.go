@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
+	"time"
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
@@ -16,7 +18,7 @@ type AthleteManager interface {
 	UpdateAthlete(ctx context.Context, req entity.AthleteUpdateRequest) (*entity.Athlete, error)
 	DeleteAthlete(ctx context.Context, athleteID uuid.UUID) error
 	DeleteAthletesForRace(ctx context.Context, raceID, eventID uuid.UUID) error
-	// FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest
+	FromCSVtoRequestAthlete(ctx context.Context, raceID uuid.UUID, data []*AthleteCSV) ([]entity.AthleteCreateRequest, error)
 }
 
 type AthleteRepo interface {
@@ -35,19 +37,21 @@ type AthleteRepo interface {
 const TimeFormatDDMMYYYY = "02.01.2006"
 
 type AthleteService struct {
-	log  *logger.Logger
-	repo AthleteRepo
+	log         *logger.Logger
+	athleteRepo AthleteRepo
+	raceRepo    RaceConfigurator
 }
 
-func NewAthleteService(logger *logger.Logger, repo AthleteRepo) *AthleteService {
+func NewAthleteService(logger *logger.Logger, athleteRepo AthleteRepo, raceRepo RaceConfigurator) *AthleteService {
 	return &AthleteService{
-		log:  logger,
-		repo: repo,
+		log:         logger,
+		athleteRepo: athleteRepo,
+		raceRepo:    raceRepo,
 	}
 }
 
 func (ps *AthleteService) GetAthleteByID(ctx context.Context, athleteID uuid.UUID) *entity.Athlete {
-	p, err := ps.repo.GetAthleteByID(ctx, athleteID)
+	p, err := ps.athleteRepo.GetAthleteByID(ctx, athleteID)
 	if err != nil {
 		return nil
 	}
@@ -63,13 +67,12 @@ func (ps *AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteC
 	// TODO check if category with this ID is exists. Complete rewrite here
 	if !req.CategoryID.Valid {
 		err := ps.assignCategory(ctx, p)
-		fmt.Println("assign category for athlete: ", req.Bib, p.CategoryID)
 		if err != nil {
 			fmt.Println("error assigning category", err)
 		}
 	}
 
-	err = ps.repo.SaveAthlete(ctx, p)
+	err = ps.athleteRepo.SaveAthlete(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +81,7 @@ func (ps *AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteC
 }
 
 func (ps *AthleteService) assignCategory(ctx context.Context, p *entity.Athlete) error {
-	catID, _, err := ps.repo.GetCategoryFor(ctx, p)
+	catID, _, err := ps.athleteRepo.GetCategoryFor(ctx, p)
 	if err != nil {
 		return fmt.Errorf("error assigning category for athlete with bib %d", p.Bib)
 	}
@@ -87,7 +90,7 @@ func (ps *AthleteService) assignCategory(ctx context.Context, p *entity.Athlete)
 }
 
 func (ps *AthleteService) UpdateAthlete(ctx context.Context, req entity.AthleteUpdateRequest) (*entity.Athlete, error) {
-	p, err := ps.repo.GetAthleteByID(ctx, req.ID)
+	p, err := ps.athleteRepo.GetAthleteByID(ctx, req.ID)
 	if err != nil {
 		return nil, fmt.Errorf("updateAthlete: athlete with ID %s not found", req.ID)
 	}
@@ -97,7 +100,7 @@ func (ps *AthleteService) UpdateAthlete(ctx context.Context, req entity.AthleteU
 	}
 	newP.ID = p.ID
 
-	err = ps.repo.SaveAthlete(ctx, newP)
+	err = ps.athleteRepo.SaveAthlete(ctx, newP)
 	if err != nil {
 		return nil, err
 	}
@@ -105,14 +108,14 @@ func (ps *AthleteService) UpdateAthlete(ctx context.Context, req entity.AthleteU
 }
 
 func (ps *AthleteService) DeleteAthlete(ctx context.Context, athleteID uuid.UUID) error {
-	a, err := ps.repo.GetAthleteByID(ctx, athleteID)
+	a, err := ps.athleteRepo.GetAthleteByID(ctx, athleteID)
 	if err != nil {
 		return err
 	}
 	if a == nil {
 		return fmt.Errorf("athlete with ID %s not found", athleteID)
 	}
-	err = ps.repo.DeleteAthlete(ctx, a)
+	err = ps.athleteRepo.DeleteAthlete(ctx, a)
 	if err != nil {
 		return fmt.Errorf("delete athlete: error deleting athlete %s from DB", athleteID)
 	}
@@ -132,12 +135,12 @@ func (ps *AthleteService) DeleteAthleteBulk(ctx context.Context, raceID uuid.UUI
 
 func (as *AthleteService) DeleteAthletesForRace(ctx context.Context, raceID, eventID uuid.UUID) error {
 	if eventID == uuid.Nil {
-		err := as.repo.DeleteAthletesForRace(ctx, raceID)
+		err := as.athleteRepo.DeleteAthletesForRace(ctx, raceID)
 		if err != nil {
 			return fmt.Errorf("error deleting athletes for raceID = %s", raceID)
 		}
 	} else {
-		err := as.repo.DeleteAthletesForRaceWithEventID(ctx, raceID, eventID)
+		err := as.athleteRepo.DeleteAthletesForRaceWithEventID(ctx, raceID, eventID)
 		if err != nil {
 			return fmt.Errorf("error deleting athletes for raceID = %s, eventID = %s", raceID, eventID)
 		}
@@ -145,45 +148,55 @@ func (as *AthleteService) DeleteAthletesForRace(ctx context.Context, raceID, eve
 	return nil
 }
 
-// func (as *AthleteService) FromCSVtoRequestAthlete(raceID uuid.UUID, data []*AthleteCSV) []entity.AthleteCreateRequest {
-// 	// FIXME get rid of cache
-// 	eventsMap := as.cache.GetEventNameIDforRace(raceID)
-// 	fmt.Println("events Map: ", eventsMap)
-// 	waves := as.cache.GetWavesForRace(raceID)
-// 	fmt.Println("waves ", waves)
-// 	var res []entity.AthleteCreateRequest
-// 	for _, a := range data {
-// 		eID := eventsMap[a.Event]
-// 		var wID uuid.UUID
-// 		for _, w := range waves {
-// 			if w.EventID == eID {
-// 				if a.Wave == "" {
-// 					wID = w.ID
-// 					break
-// 				} else if w.Name == a.Wave {
-// 					wID = w.ID
-// 				}
-// 			}
-// 		}
-// 		dob, _ := time.Parse(TimeFormatDDMMYYYY, a.DateOfBirth)
-// 		r := entity.AthleteCreateRequest{
-// 			RaceID:      raceID,
-// 			EventID:     eID,
-// 			WaveID:      wID,
-// 			Bib:         a.Bib,
-// 			Chip:        a.Chip,
-// 			FirstName:   a.FirstName,
-// 			LastName:    a.LastName,
-// 			Gender:      entity.CategoryGender(a.Gender),
-// 			DateOfBirth: dob,
-// 			CategoryID: uuid.NullUUID{
-// 				UUID:  uuid.UUID{},
-// 				Valid: false,
-// 			},
-// 			Phone:    a.Phone,
-// 			Comments: a.Comments,
-// 		}
-// 		res = append(res, r)
-// 	}
-// 	return res
-// }
+func (as *AthleteService) FromCSVtoRequestAthlete(ctx context.Context, raceID uuid.UUID, data []*AthleteCSV) ([]entity.AthleteCreateRequest, error) {
+	raceModel, err := as.raceRepo.GetRaceConfig(ctx, raceID)
+	if err != nil {
+		return nil, err
+	}
+	var res []entity.AthleteCreateRequest
+	for _, a := range data {
+		eventIndex := slices.IndexFunc(raceModel.Events, func(e *entity.Event) bool {
+			return e.Name == a.Event
+		})
+		if eventIndex == -1 {
+			return nil, fmt.Errorf("event with name %s does not exists. Import aborted", a.Event)
+		}
+		eventID := raceModel.Events[eventIndex].ID
+		var waveID uuid.UUID
+		if a.Wave == "" {
+			// if wave is not provided in CSV, asign to athlete the first wave of event by default
+			waveID = raceModel.Events[eventIndex].Waves[0].ID
+		} else {
+			waveIndex := slices.IndexFunc(raceModel.Events[eventIndex].Waves, func(w *entity.Wave) bool {
+				return w.Name == a.Wave
+			})
+			if waveIndex == -1 {
+				return nil, fmt.Errorf("wave with name %s does not exists. Import aborted", a.Wave)
+			}
+			waveID = raceModel.Events[eventIndex].Waves[waveIndex].ID
+		}
+		dob, err := time.Parse(TimeFormatDDMMYYYY, a.DateOfBirth)
+		if err != nil {
+			dob = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
+		}
+		r := entity.AthleteCreateRequest{
+			RaceID:      raceID,
+			EventID:     eventID,
+			WaveID:      waveID,
+			Bib:         a.Bib,
+			Chip:        a.Chip,
+			FirstName:   a.FirstName,
+			LastName:    a.LastName,
+			Gender:      entity.CategoryGender(a.Gender),
+			DateOfBirth: dob,
+			CategoryID: uuid.NullUUID{
+				UUID:  uuid.UUID{},
+				Valid: false,
+			},
+			Phone:    a.Phone,
+			Comments: a.Comments,
+		}
+		res = append(res, r)
+	}
+	return res, nil
+}
