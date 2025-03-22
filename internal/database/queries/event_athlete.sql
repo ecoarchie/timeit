@@ -7,6 +7,11 @@ DO UPDATE
 SET event_id=EXCLUDED.event_id, wave_id=EXCLUDED.wave_id, category_id=EXCLUDED.category_id, bib=EXCLUDED.bib 
 RETURNING *;
 
+-- name: AddEventAthleteBulk :copyfrom
+INSERT INTO event_athlete
+(race_id, event_id, athlete_id, wave_id, category_id, bib)
+VALUES ($1, $2, $3, $4, $5, $6);
+
 -- name: GetEventAthlete :one
 SELECT race_id, event_id, athlete_id, wave_id, category_id, bib
 FROM event_athlete

@@ -162,7 +162,7 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
-	var raceConfig *dto.RaceConfig
+	var raceConfig *dto.RaceModelDTO
 	err := readJSON(w, r, &raceConfig)
 	if err != nil {
 		mes := "error parsing race config form data"
@@ -182,8 +182,8 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	err = rr.conf.SaveRaceConfig(ctx, raceConfig, v)
 	if err != nil {
 		mes := "error saving race config"
-		rr.log.Error(mes, err)
-		serverErrorResponse(w, err)
+		rr.log.Error(mes, "race config", err)
+		failedValidationResponse(w, v.Errors)
 		return
 	}
 	rr.log.Info("Config for race saved")

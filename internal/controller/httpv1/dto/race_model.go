@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// FIXME extract all business validation logic to correspondent layer
 type RaceDTO struct {
 	ID       uuid.UUID `json:"race_id"`
 	Name     string    `json:"race_name"`
@@ -65,26 +64,20 @@ type CategoryDTO struct {
 	ToRaceDate   bool      `json:"to_race_date"`
 }
 
-type RaceConfig struct {
+type RaceModelDTO struct {
 	*RaceDTO
 	TimeReaders []*TimeReaderDTO `json:"time_readers"`
-	Events      []*EventConfig   `json:"events"`
+	Events      []*EventModelDTO `json:"events"`
 }
 
-type EventConfig struct {
+type EventModelDTO struct {
 	*EventDTO
 	Splits     []*SplitDTO    `json:"splits"`
 	Waves      []*WaveDTO     `json:"waves"`
 	Categories []*CategoryDTO `json:"categories"`
 }
 
-type RaceFormData struct {
-	Id       string `json:"race_id"`
-	Name     string `json:"race_name"`
-	Timezone string `json:"timezone"`
-}
-
-func (rc RaceConfig) String() string {
+func (rc RaceModelDTO) String() string {
 	return fmt.Sprintf(`{
 	RaceID: %s,
 	Name: %s,
@@ -94,7 +87,7 @@ func (rc RaceConfig) String() string {
 }`, rc.Name, rc.Name, rc.Timezone, rc.Events)
 }
 
-func (rc *RaceConfig) Validate(ctx context.Context, v *validator.Validator) {
+func (rc *RaceModelDTO) Validate(ctx context.Context, v *validator.Validator) {
 	rc.validateRace(v)
 
 	v.Check(len(rc.TimeReaders) > 0, "time readers", "race must have at least one time reader")
@@ -115,18 +108,18 @@ func (rc *RaceConfig) Validate(ctx context.Context, v *validator.Validator) {
 	}
 }
 
-func (rc *RaceConfig) validateRace(v *validator.Validator) {
+func (rc *RaceModelDTO) validateRace(v *validator.Validator) {
 	v.Check(rc.ID != uuid.Nil, "race_id", "must be valid UUID")
 	v.Check(rc.Name != "", "race name", "must not be empty")
 }
 
-func (rc *RaceConfig) validateTimeReaders(v *validator.Validator) {
+func (rc *RaceModelDTO) validateTimeReaders(v *validator.Validator) {
 	for _, r := range rc.TimeReaders {
 		v.Check(r.RaceID == rc.ID, "timers raceID", "must correspond to ID of configurated race")
 	}
 }
 
-func validateEventConfig(v *validator.Validator, raceID uuid.UUID, readers []*TimeReaderDTO, ec *EventConfig) {
+func validateEventConfig(v *validator.Validator, raceID uuid.UUID, readers []*TimeReaderDTO, ec *EventModelDTO) {
 	v.Check(raceID == ec.RaceID, "race_id for event", "must correspond to ID of configurated race")
 	v.Check(ec.ID != uuid.Nil, "event_id", "must not be empty")
 	v.Check(ec.Name != "", "event_name", "must not be empty")

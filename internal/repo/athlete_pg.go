@@ -30,6 +30,9 @@ type ParticipantQuery interface {
 	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
 	CreateAthleteSplits(ctx context.Context, arg database.CreateAthleteSplitsParams) error
 	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
+	CreateAthleteBulk(ctx context.Context, arg []database.CreateAthleteBulkParams) (int64, error)
+	AddChipBibBulk(ctx context.Context, arg []database.AddChipBibBulkParams) (int64, error)
+	AddEventAthleteBulk(ctx context.Context, arg []database.AddEventAthleteBulkParams) (int64, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -50,6 +53,75 @@ func (ar *AthleteRepoPG) WithTx(tx pgx.Tx) *AthleteRepoPG {
 		q:  ar.q.WithTx(tx),
 		pg: ar.pg,
 	}
+}
+
+func (ar *AthleteRepoPG) SaveAthleteBulk(ctx context.Context, raceID uuid.UUID, athletes []*entity.Athlete) (int64, error) {
+	tx, err := ar.pg.Pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+	qtx := ar.WithTx(tx)
+
+	err = ar.DeleteAthletesForRace(ctx, raceID)
+	if err != nil {
+		return 0, fmt.Errorf("save athlete bulk: delete athletes for race with ID: %s", err.Error())
+	}
+	createPms := make([]database.CreateAthleteBulkParams, 0, len(athletes))
+	chipBibPms := make([]database.AddChipBibBulkParams, 0, len(athletes)) // FIXME if athlete has more than 1 chip, this must be rewritten
+	eventAthletePms := make([]database.AddEventAthleteBulkParams, 0, len(athletes))
+	for _, a := range athletes {
+		ap := database.CreateAthleteBulkParams{
+			ID:              a.ID,
+			RaceID:          a.RaceID,
+			FirstName:       pgxmapper.StringToPgxText(a.FirstName),
+			LastName:        pgxmapper.StringToPgxText(a.LastName),
+			Gender:          database.CategoryGender(a.Gender),
+			DateOfBirth:     pgxmapper.TimeToPgxDate(a.DateOfBirth),
+			Phone:           pgxmapper.StringToPgxText(a.Phone),
+			AthleteComments: pgxmapper.StringToPgxText(a.Comments),
+		}
+		createPms = append(createPms, ap)
+
+		cb := database.AddChipBibBulkParams{
+			RaceID:  a.RaceID,
+			EventID: a.EventID,
+			Chip:    int32(a.Chip),
+			Bib:     int32(a.Bib),
+		}
+		chipBibPms = append(chipBibPms, cb)
+
+		ea := database.AddEventAthleteBulkParams{
+			RaceID:     a.RaceID,
+			EventID:    a.EventID,
+			AthleteID:  a.ID,
+			WaveID:     a.WaveID,
+			CategoryID: a.CategoryID,
+			Bib:        int32(a.Bib),
+		}
+		eventAthletePms = append(eventAthletePms, ea)
+	}
+	createdCount, err := qtx.q.CreateAthleteBulk(ctx, createPms)
+	if err != nil {
+		return 0, fmt.Errorf("save athlete bulk: error creating athletes")
+	}
+
+	_, err = qtx.q.AddChipBibBulk(ctx, chipBibPms)
+	if err != nil {
+		return 0, fmt.Errorf("save athlete bulk: error creating chip bib")
+	}
+
+	_, err = qtx.q.AddEventAthleteBulk(ctx, eventAthletePms)
+	if err != nil {
+		return 0, fmt.Errorf("save athlete bulk: error creating event-athlete record")
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("save athlete bulk: transaction commit error")
+	}
+
+	return createdCount, nil
 }
 
 func (ar *AthleteRepoPG) SaveAthlete(ctx context.Context, p *entity.Athlete) error {
@@ -126,7 +198,7 @@ func (ar *AthleteRepoPG) GetCategoryFor(ctx context.Context, p *entity.Athlete) 
 }
 
 func (ar *AthleteRepoPG) GetAthleteWithChip(chip int) (*entity.Athlete, error) {
-	return nil, nil
+	panic("not implemented")
 }
 
 func (ar *AthleteRepoPG) GetAthleteByID(ctx context.Context, athleteID uuid.UUID) (*entity.Athlete, error) {
@@ -152,6 +224,8 @@ func (ar *AthleteRepoPG) GetAthleteByID(ctx context.Context, athleteID uuid.UUID
 	}
 	return athlete, nil
 }
+
+// func (ar *AthleteRepoPG) TruncateAndSaveBulkAthletes(ctx context.Context, raceID uuid.UUID, [])
 
 func (ar *AthleteRepoPG) DeleteAthletesForRace(ctx context.Context, raceID uuid.UUID) error {
 	tx, err := ar.pg.Pool.Begin(ctx)

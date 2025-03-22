@@ -14,11 +14,8 @@ import (
 
 type ValidationErrors map[string]string
 
-// TODO separate errors to ErrorToSave (preventing from saving) and Warning (can save, just pay attention)
-// TODO add category boundaries validation
-
 type RaceConfigurator interface {
-	SaveRaceConfig(ctx context.Context, rc *dto.RaceConfig, v *validator.Validator) error
+	SaveRaceConfig(ctx context.Context, rc *dto.RaceModelDTO, v *validator.Validator) error
 	GetRaces(ctx context.Context) ([]*entity.Race, error)
 	CreateRace(ctx context.Context, req *dto.RaceDTO, v *validator.Validator) (*entity.Race, error)
 	DeleteRace(ctx context.Context, raceID uuid.UUID) error
@@ -84,7 +81,7 @@ func (rs RaceService) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 	return rconfig, nil
 }
 
-func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceConfig, v *validator.Validator) error {
+func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceModelDTO, v *validator.Validator) error {
 	race := entity.NewRace(rc.RaceDTO, v)
 	if !v.Valid() {
 		return fmt.Errorf("save race config validation error: race info")
@@ -117,12 +114,6 @@ func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceConfig, v 
 		events = append(events, event)
 	}
 
-	// FIXME pass to SaveRaceConfig the model
-	// model := &entity.RaceModel{
-	// 	Race:        race,
-	// 	TimeReaders: timeReaders,
-	// 	Events:      events,
-	// }
 	err := rs.repo.SaveRaceConfig(ctx, race, timeReaders, events)
 	if err != nil {
 		const msg = "error saving race to repo"

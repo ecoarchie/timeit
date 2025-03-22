@@ -15,6 +15,7 @@ import (
 type AthleteManager interface {
 	GetAthleteByID(ctx context.Context, athleteID uuid.UUID) *entity.Athlete
 	CreateAthlete(ctx context.Context, req entity.AthleteCreateRequest) (*entity.Athlete, error)
+	CreateBulkAthletes(ctx context.Context, reqs []entity.AthleteCreateRequest) (int64, error)
 	UpdateAthlete(ctx context.Context, req entity.AthleteUpdateRequest) (*entity.Athlete, error)
 	DeleteAthlete(ctx context.Context, athleteID uuid.UUID) error
 	DeleteAthletesForRace(ctx context.Context, raceID, eventID uuid.UUID) error
@@ -23,6 +24,7 @@ type AthleteManager interface {
 
 type AthleteRepo interface {
 	SaveAthlete(ctx context.Context, p *entity.Athlete) error
+	SaveAthleteBulk(ctx context.Context, raceID uuid.UUID, athletes []*entity.Athlete) (int64, error)
 	GetCategoryFor(ctx context.Context, p *entity.Athlete) (uuid.NullUUID, bool, error)
 	GetAthleteWithChip(chip int) (*entity.Athlete, error)
 	GetAthleteByID(ctx context.Context, athleteID uuid.UUID) (*entity.Athlete, error)
@@ -58,13 +60,29 @@ func (ps *AthleteService) GetAthleteByID(ctx context.Context, athleteID uuid.UUI
 	return p
 }
 
+func (as *AthleteService) CreateBulkAthletes(ctx context.Context, reqs []entity.AthleteCreateRequest) (int64, error) {
+	athletes := make([]*entity.Athlete, 0, len(reqs))
+	for _, r := range reqs {
+		a, err := entity.NewAthlete(r)
+		if err != nil {
+			return 0, fmt.Errorf("error creating athlete from CSV: validation error: %s", err.Error())
+		}
+		athletes = append(athletes, a)
+	}
+
+	createdCount, err := as.athleteRepo.SaveAthleteBulk(ctx, athletes[0].RaceID, athletes)
+	if err != nil {
+		return 0, err
+	}
+	return createdCount, nil
+}
+
 func (ps *AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteCreateRequest) (*entity.Athlete, error) {
 	p, err := entity.NewAthlete(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO check if category with this ID is exists. Complete rewrite here
 	if !req.CategoryID.Valid {
 		err := ps.assignCategory(ctx, p)
 		if err != nil {
@@ -83,7 +101,7 @@ func (ps *AthleteService) CreateAthlete(ctx context.Context, req entity.AthleteC
 func (ps *AthleteService) assignCategory(ctx context.Context, p *entity.Athlete) error {
 	catID, _, err := ps.athleteRepo.GetCategoryFor(ctx, p)
 	if err != nil {
-		return fmt.Errorf("error assigning category for athlete with bib %d", p.Bib)
+		return fmt.Errorf("error assigning category for athlete with bib %d: %s", p.Bib, err.Error())
 	}
 	p.CategoryID = catID
 	return nil
@@ -154,30 +172,46 @@ func (as *AthleteService) FromCSVtoRequestAthlete(ctx context.Context, raceID uu
 		return nil, err
 	}
 	var res []entity.AthleteCreateRequest
+	start := time.Now()
 	for _, a := range data {
-		eventIndex := slices.IndexFunc(raceModel.Events, func(e *entity.Event) bool {
+		// assign eventID
+		eventIdx := slices.IndexFunc(raceModel.Events, func(e *entity.Event) bool {
 			return e.Name == a.Event
 		})
-		if eventIndex == -1 {
+		if eventIdx == -1 {
 			return nil, fmt.Errorf("event with name %s does not exists. Import aborted", a.Event)
 		}
-		eventID := raceModel.Events[eventIndex].ID
+		eventID := raceModel.Events[eventIdx].ID
+
+		// assign waveID
 		var waveID uuid.UUID
 		if a.Wave == "" {
 			// if wave is not provided in CSV, asign to athlete the first wave of event by default
-			waveID = raceModel.Events[eventIndex].Waves[0].ID
+			waveID = raceModel.Events[eventIdx].Waves[0].ID
 		} else {
-			waveIndex := slices.IndexFunc(raceModel.Events[eventIndex].Waves, func(w *entity.Wave) bool {
+			waveIdx := slices.IndexFunc(raceModel.Events[eventIdx].Waves, func(w *entity.Wave) bool {
 				return w.Name == a.Wave
 			})
-			if waveIndex == -1 {
+			if waveIdx == -1 {
 				return nil, fmt.Errorf("wave with name %s does not exists. Import aborted", a.Wave)
 			}
-			waveID = raceModel.Events[eventIndex].Waves[waveIndex].ID
+			waveID = raceModel.Events[eventIdx].Waves[waveIdx].ID
 		}
 		dob, err := time.Parse(TimeFormatDDMMYYYY, a.DateOfBirth)
 		if err != nil {
 			dob = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
+		}
+		gender := entity.GenderFrom(a.Gender)
+		// assign categoryID
+		categoryIdx := slices.IndexFunc(raceModel.Events[eventIdx].Categories, func(c *entity.Category) bool {
+			return c.Valid(gender, dob)
+		})
+		var athleteCatID uuid.NullUUID
+		if categoryIdx != -1 {
+			athleteCatID = uuid.NullUUID{
+				UUID:  raceModel.Events[eventIdx].Categories[categoryIdx].ID,
+				Valid: true,
+			}
 		}
 		r := entity.AthleteCreateRequest{
 			RaceID:      raceID,
@@ -187,16 +221,14 @@ func (as *AthleteService) FromCSVtoRequestAthlete(ctx context.Context, raceID uu
 			Chip:        a.Chip,
 			FirstName:   a.FirstName,
 			LastName:    a.LastName,
-			Gender:      entity.CategoryGender(a.Gender),
+			Gender:      gender,
 			DateOfBirth: dob,
-			CategoryID: uuid.NullUUID{
-				UUID:  uuid.UUID{},
-				Valid: false,
-			},
-			Phone:    a.Phone,
-			Comments: a.Comments,
+			CategoryID:  athleteCatID,
+			Phone:       a.Phone,
+			Comments:    a.Comments,
 		}
 		res = append(res, r)
 	}
+	fmt.Printf("Processing CSV took: %v\n", time.Since(start))
 	return res, nil
 }

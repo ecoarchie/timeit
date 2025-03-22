@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 	"unicode/utf8"
 
 	"github.com/gocarina/gocsv"
@@ -111,6 +112,7 @@ func (ai AthleteImporterCSV) CompareHeaders() (userHeaders []string, matchingVal
 }
 
 func (ai AthleteImporterCSV) ReadCSV(validatedHeaders []string) ([]*AthleteCSV, error) {
+	start := time.Now()
 	_, err := ai.copyToNewCSVWithValidHeaders(validatedHeaders)
 	if err != nil {
 		return nil, errors.Wrap(err, "error copying data to new csv")
@@ -135,6 +137,7 @@ func (ai AthleteImporterCSV) ReadCSV(validatedHeaders []string) ([]*AthleteCSV, 
 	if err != nil {
 		return nil, fmt.Errorf("error deleting file")
 	}
+	fmt.Printf("ReadCSV took: %v\n", time.Since(start))
 	return athletes, nil
 }
 

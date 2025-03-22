@@ -12,6 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CreateAthleteBulkParams struct {
+	ID              uuid.UUID
+	RaceID          uuid.UUID
+	FirstName       pgtype.Text
+	LastName        pgtype.Text
+	Gender          CategoryGender
+	DateOfBirth     pgtype.Date
+	Phone           pgtype.Text
+	AthleteComments pgtype.Text
+}
+
 const createOrUpdateAthlete = `-- name: CreateOrUpdateAthlete :one
 INSERT INTO athletes
 (id, race_id, first_name, last_name, gender, date_of_birth, phone, athlete_comments)

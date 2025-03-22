@@ -17,7 +17,7 @@ DO UPDATE
 SET first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name, gender=EXCLUDED.gender, date_of_birth=EXCLUDED.date_of_birth, phone=EXCLUDED.phone, athlete_comments=EXCLUDED.athlete_comments, updated_at=EXCLUDED.updated_at
 RETURNING *;
 
--- name: CreateAthlete :batchexec
+-- name: CreateAthleteBulk :copyfrom
 INSERT INTO athletes
 (id, race_id, first_name, last_name, gender, date_of_birth, phone, athlete_comments)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8);

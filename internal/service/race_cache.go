@@ -33,7 +33,7 @@ type (
 // 	}
 // }
 
-// func (rc *RaceCache) UpdateWith(cfg *entity.RaceConfig) {
+// func (rc *RaceCache) UpdateWith(cfg *entity.RaceModelDTO) {
 // 	rc.clearRaceCache(cfg.ID)
 // 	rc.Races[cfg.ID] = &entity.Race{}
 // 	rc.Races[cfg.ID].Name = cfg.Name

@@ -21,7 +21,7 @@ import (
 func Run(cfg *config.Config) {
 	logger := logger.New(cfg.Log.Level)
 
-	// Repository
+	// Database
 	pg, err := postgres.New(cfg.PG.URL, postgres.MaxPoolSize(cfg.PG.PoolMax))
 	if err != nil {
 		logger.Fatal(fmt.Errorf("app - Run - postgres.New: %w", err).Error())
@@ -29,9 +29,6 @@ func Run(cfg *config.Config) {
 	defer pg.Close()
 
 	queries := database.New(pg.Pool)
-
-	// Race Cache
-	// raceCache := service.NewRaceCache()
 
 	// Services
 	logger.Info("Creating services")

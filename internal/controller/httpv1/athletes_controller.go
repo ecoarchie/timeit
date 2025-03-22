@@ -2,8 +2,9 @@ package httpv1
 
 import (
 	"context"
+	"fmt"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/ecoarchie/timeit/internal/entity"
 	"github.com/ecoarchie/timeit/internal/service"
@@ -54,7 +55,7 @@ func (p athletesRoutes) createSingleAthlete(w http.ResponseWriter, r *http.Reque
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	a, err := p.service.CreateAthlete(r.Context(), req)
+	a, err := p.service.CreateAthlete(context.Background(), req)
 	if err != nil {
 		mes := "error creating athlete"
 		p.logger.Error(mes, err)
@@ -135,16 +136,24 @@ func (p athletesRoutes) createBulkFromCSV(w http.ResponseWriter, r *http.Request
 		serverErrorResponse(w, err)
 		return
 	}
-	// FIXME
 	athletReqs, err := p.service.FromCSVtoRequestAthlete(ctx, raceID, athletes)
 	if err != nil {
 		serverErrorResponse(w, err)
 		return
 	}
-	for _, a := range athletReqs {
-		_, err := p.service.CreateAthlete(r.Context(), a)
-		if err != nil {
-			p.logger.Error("error create athlete with bib from csv: ", strconv.Itoa(a.Bib), err)
-		}
+	start := time.Now()
+	// for _, a := range athletReqs {
+	// 	_, err := p.service.CreateAthlete(ctx, a)
+	// 	if err != nil {
+	// 		p.logger.Error("error create athlete with bib from csv: ", strconv.Itoa(a.Bib), err)
+	// 	}
+	// }
+	count, err := p.service.CreateBulkAthletes(ctx, athletReqs)
+	if err != nil {
+		p.logger.Error("error creating bulk athletes for race csv", "raceID", raceID, "error", err.Error())
+		errorResponse(w, http.StatusBadRequest, "error creating athletes from CSV")
+		return
 	}
+	fmt.Printf("Saving athletes one by one took: %v\n", time.Since(start))
+	writeJSON(w, http.StatusCreated, map[string]int64{"athletes created": count}, nil)
 }

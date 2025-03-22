@@ -79,6 +79,7 @@ func NewEvent(e *dto.EventDTO, ss []*dto.SplitDTO, trs []*dto.TimeReaderDTO, ww 
 			categories = append(categories, cat)
 		}
 		v.Check(validator.Unique(categoryNames), "categories", "must have unique names for event")
+		CheckCategoriesBoundary(categories, v)
 	}
 
 	event := &Event{

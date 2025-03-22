@@ -45,6 +45,13 @@ func (q *Queries) AddChipBib(ctx context.Context, arg AddChipBibParams) (ChipBib
 	return i, err
 }
 
+type AddChipBibBulkParams struct {
+	RaceID  uuid.UUID
+	EventID uuid.UUID
+	Chip    int32
+	Bib     int32
+}
+
 const deleteChipBib = `-- name: DeleteChipBib :exec
 DELETE FROM chip_bib
 WHERE race_id=$1 AND chip=$2 and bib=$3

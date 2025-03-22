@@ -53,6 +53,15 @@ func (q *Queries) AddEventAthlete(ctx context.Context, arg AddEventAthleteParams
 	return i, err
 }
 
+type AddEventAthleteBulkParams struct {
+	RaceID     uuid.UUID
+	EventID    uuid.UUID
+	AthleteID  uuid.UUID
+	WaveID     uuid.UUID
+	CategoryID uuid.NullUUID
+	Bib        int32
+}
+
 const getEventAthlete = `-- name: GetEventAthlete :one
 SELECT race_id, event_id, athlete_id, wave_id, category_id, bib
 FROM event_athlete
