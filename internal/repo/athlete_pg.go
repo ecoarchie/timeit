@@ -25,7 +25,6 @@ type ParticipantQuery interface {
 	DeleteChipBibWithRaceID(ctx context.Context, raceID uuid.UUID) error
 	GetEventAthlete(ctx context.Context, athleteID uuid.UUID) (database.EventAthlete, error)
 	GetCategoryForAthlete(ctx context.Context, arg database.GetCategoryForAthleteParams) (database.Category, error)
-	GetEventAthleteRecords(ctx context.Context, arg database.GetEventAthleteRecordsParams) ([]database.GetEventAthleteRecordsRow, error)
 	GetEventAthleteRecordsC(ctx context.Context, arg database.GetEventAthleteRecordsCParams) ([]database.GetEventAthleteRecordsCRow, error)
 	GetSplitsForEvent(ctx context.Context, eventID uuid.UUID) ([]database.Split, error)
 	CreateAthleteSplits(ctx context.Context, arg database.CreateAthleteSplitsParams) error
@@ -33,6 +32,7 @@ type ParticipantQuery interface {
 	CreateAthleteBulk(ctx context.Context, arg []database.CreateAthleteBulkParams) (int64, error)
 	AddChipBibBulk(ctx context.Context, arg []database.AddChipBibBulkParams) (int64, error)
 	AddEventAthleteBulk(ctx context.Context, arg []database.AddEventAthleteBulkParams) (int64, error)
+	GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]database.Split, error)
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -305,6 +305,126 @@ func (ar *AthleteRepoPG) SaveAthleteSplits(ctx context.Context, as []database.Cr
 			return err
 		}
 	}
+	return nil
+}
+
+func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID, eventID uuid.UUID, as []database.CreateAthleteSplitsParams) error {
+	tx, err := ar.pg.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tempSql := `
+		CREATE TEMPORARY TABLE athlete_split_tmp (
+			LIKE athlete_split INCLUDING ALL
+		) ON COMMIT DROP;
+	`
+
+	_, err = tx.Exec(ctx, tempSql)
+	if err != nil {
+		fmt.Println("Error executing creation temp table: ", err)
+		return err
+	}
+
+	var linkedParams [][]interface{}
+	for _, p := range as {
+		linkedParams = append(linkedParams, []interface{}{p.RaceID, p.EventID, p.SplitID, p.AthleteID, p.Tod, p.GunTime, p.NetTime})
+	}
+	_, err = tx.CopyFrom(ctx, []string{"athlete_split_tmp"}, []string{"race_id", "event_id", "split_id", "athlete_id", "tod", "gun_time", "net_time"}, pgx.CopyFromRows(linkedParams))
+	if err != nil {
+		fmt.Println("Error executing copyfrom athlete splits: ", err)
+		return err
+	}
+
+	rankSql := `
+		merge into athlete_split asl
+		using (
+			select
+				ats.race_id,
+				ats.event_id,
+				ats.split_id,
+				ats.athlete_id,
+				ats.tod,
+				ats.gun_time,
+				ats.net_time,
+				CASE
+					WHEN ss.status_id = 1 THEN
+					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.gun_time ASC)
+				END AS gun_rank_gender,
+				CASE 
+							WHEN ea.category_id IS NOT NULL AND ss.status_id = 1 THEN
+							RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ea.category_id, ss.status_id ORDER BY ats.gun_time ASC) 
+				END AS gun_rank_category,
+				CASE
+					WHEN ss.status_id = 1 THEN
+					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ss.status_id ORDER BY ats.gun_time ASC)
+				END AS gun_rank_overall,
+				CASE
+					WHEN ss.status_id = 1 THEN
+					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.net_time ASC)
+				END AS net_rank_gender,
+				CASE 
+						WHEN ea.category_id IS NOT NULL AND ss.status_id = 1 THEN
+						RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ea.category_id, ss.status_id ORDER BY ats.net_time ASC) 
+				END AS net_rank_category,
+				CASE
+					WHEN ss.status_id = 1 THEN
+					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ss.status_id ORDER BY ats.net_time ASC)
+				END AS net_rank_overall
+			from athlete_split_tmp ats
+			join athletes a on a.id = ats.athlete_id
+			join event_athlete ea on ea.athlete_id  = ats.athlete_id and ea.race_id = ats.race_id and ea.event_id = ats.event_id
+			join statuses ss on ea.status_id = ss.status_id
+			join splits s on s.id = ats.split_id and s.race_id = ats.race_id and s.event_id = ats.event_id
+			where
+				ats.race_id = $1
+				and ats.event_id = $2
+			order by
+				ats.gun_time
+		) ats
+		on asl.race_id = ats.race_id and asl.event_id = ats.event_id and asl.split_id = ats.split_id and asl.athlete_id = ats.athlete_id
+		when matched then update set
+			tod = ats.tod,
+			gun_time = ats.gun_time,
+			net_time = ats.net_time,
+			gun_rank_gender = ats.gun_rank_gender,
+			gun_rank_category = ats.gun_rank_category,
+			gun_rank_overall = ats.gun_rank_overall,
+			net_rank_gender = ats.net_rank_gender,
+			net_rank_category = ats.net_rank_category,
+			net_rank_overall = ats.net_rank_overall
+		when not matched then insert 
+			(tod, gun_time, net_time, gun_rank_gender, gun_rank_category, gun_rank_overall, net_rank_gender, net_rank_category, net_rank_overall)
+			values (ats.tod, ats.gun_time, ats.net_time, ats.gun_rank_gender, ats.gun_rank_category, ats.gun_rank_overall, ats.net_rank_gender, ats.net_rank_category, ats.net_rank_overall)
+	`
+	_, err = tx.Exec(ctx, rankSql, raceID, eventID)
+	if err != nil {
+		fmt.Println("Error executing rank query: ", err)
+		return err
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		fmt.Println("Error commiting transaction: ", err)
+		return err
+	}
+	return nil
+}
+
+func (ar *AthleteRepoPG) GetAthleteSplitResults(ctx context.Context, raceID uuid.UUID) error {
+	splits, err := ar.q.GetSplitsForRace(ctx, raceID)
+	if err != nil {
+		return err
+	}
+
+	m := map[uuid.UUID][]database.Split{}
+	for _, s := range splits {
+		m[s.EventID] = append(m[s.EventID], s)
+	}
+
+	// res := map[uuid.UUID][]entity.AthleteSplitResults{}
+
+	// FIXME complete the func
 	return nil
 }
 

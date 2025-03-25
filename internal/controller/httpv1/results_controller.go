@@ -22,16 +22,17 @@ func newResultsRoutes(logger *logger.Logger, service service.ResultsManager) htt
 		logger:  logger,
 	}
 	r := chi.NewRouter()
-	r.Get("/results", rr.getResults)
+	r.Get("/", rr.getResults)
+	r.Get("/calculate", rr.calculateResults)
 	return r
 }
 
 func (p resultsRoutes) getResults(w http.ResponseWriter, r *http.Request) {
 	rID := chi.URLParam(r, "race_id")
 	raceID, _ := uuid.Parse(rID)
-	res, err := p.service.GetResults(context.Background(), raceID)
+	res, err := p.service.GetSplitResults(context.Background(), raceID)
 	if err != nil {
-		p.logger.Error("Calculate results: ", "err", err)
+		p.logger.Error("Get splits results: ", "err", err.Error())
 		serverErrorResponse(w, err)
 		return
 	}
@@ -39,4 +40,19 @@ func (p resultsRoutes) getResults(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		serverErrorResponse(w, err)
 	}
+}
+
+func (p resultsRoutes) calculateResults(w http.ResponseWriter, r *http.Request) {
+	rID := chi.URLParam(r, "race_id")
+	raceID, _ := uuid.Parse(rID)
+	err := p.service.CalculateSplitResults(context.Background(), raceID)
+	if err != nil {
+		p.logger.Error("Calculate results: ", "err", err)
+		serverErrorResponse(w, err)
+		return
+	}
+	// err = writeJSON(w, http.StatusOK, res, nil)
+	// if err != nil {
+	// 	serverErrorResponse(w, err)
+	// }
 }

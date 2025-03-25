@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"regexp"
 	"slices"
 	"time"
@@ -8,7 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+var (
+	EmailRX       = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	ErrValidation = errors.New("validation error")
+)
 
 type Validator struct {
 	Errors map[string]string

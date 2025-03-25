@@ -24,6 +24,26 @@ type AthleteSplit struct {
 	NetRankCategory int
 }
 
+type SplitData struct {
+	SplitID         uuid.UUID
+	TOD             time.Time
+	GunTime         time.Duration
+	NetTime         time.Duration
+	GunRankOverall  int
+	GunRankGender   int
+	GunRankCategory int
+	NetRankOverall  int
+	NetRankGender   int
+	NetRankCategory int
+}
+
+type AthleteSplitResults struct {
+	AthleteID  uuid.UUID
+	Gender     CategoryGender
+	CategoryID uuid.NullUUID
+	Splits     map[string]SplitData
+}
+
 // func NewAthleteResults(p *Athlete) *AthleteResult {
 // 	return &AthleteResult{
 // 		p,

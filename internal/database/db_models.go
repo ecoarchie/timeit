@@ -113,13 +113,19 @@ type Athlete struct {
 }
 
 type AthleteSplit struct {
-	RaceID    uuid.UUID
-	EventID   uuid.UUID
-	SplitID   uuid.UUID
-	AthleteID uuid.UUID
-	Tod       pgtype.Timestamp
-	GunTime   pgtype.Interval
-	NetTime   pgtype.Interval
+	RaceID          uuid.UUID
+	EventID         uuid.UUID
+	SplitID         uuid.UUID
+	AthleteID       uuid.UUID
+	Tod             pgtype.Timestamp
+	GunTime         pgtype.Interval
+	NetTime         pgtype.Interval
+	GunRankGender   pgtype.Int4
+	GunRankCategory pgtype.Int4
+	GunRankOverall  pgtype.Int4
+	NetRankGender   pgtype.Int4
+	NetRankCategory pgtype.Int4
+	NetRankOverall  pgtype.Int4
 }
 
 type Category struct {
@@ -156,6 +162,7 @@ type EventAthlete struct {
 	WaveID     uuid.UUID
 	CategoryID uuid.NullUUID
 	Bib        int32
+	StatusID   pgtype.Int4
 }
 
 type Race struct {
@@ -185,6 +192,14 @@ type Split struct {
 	MaxTime            pgtype.Interval
 	MinLapTime         pgtype.Interval
 	PreviousLapSplitID uuid.NullUUID
+}
+
+type Status struct {
+	StatusID         int32
+	StatusFull       string
+	StatusCode       string
+	CanGetRank       bool
+	CanAssignAtSplit bool
 }
 
 type TimeReader struct {

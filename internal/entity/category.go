@@ -99,15 +99,18 @@ func CheckCategoriesBoundary(cats []*Category, v *validator.Validator) {
 		genderMap[c.Gender] = append(genderMap[c.Gender], c)
 	}
 	for _, cc := range genderMap {
-		if len(cc) > 1 {
+		if len(cc) > 2 {
 			for i := 1; i < len(cc)-1; i++ {
 				if cc[i].DateTo.After(cc[i-1].DateFrom) || cc[i-1].DateFrom.Sub(cc[i].DateTo) > time.Duration(time.Hour*24) {
 					v.AddError(cc[i-1].Name+" and "+cc[i].Name, "not consequent dates")
-					fmt.Println("DateTo, DateFrom", cc[i].DateTo, cc[i-1].DateFrom)
 				} else if cc[i].DateFrom.Before(cc[i+1].DateTo) || cc[i].DateFrom.Sub(cc[i+1].DateTo) > time.Duration(time.Hour*24) {
 					v.AddError(cc[i].Name+" and "+cc[i+1].Name, "not consequent dates")
-					fmt.Println("DateTo, DateFrom", cc[i].DateTo, cc[i+1].DateFrom)
 				}
+			}
+		}
+		if len(cc) == 2 {
+			if cc[0].DateFrom.Before(cc[1].DateTo) || cc[0].DateFrom.Sub(cc[1].DateTo) > time.Duration(time.Hour*24) {
+				v.AddError(cc[0].Name+" and "+cc[1].Name, "not consequent dates")
 			}
 		}
 	}

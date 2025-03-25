@@ -44,6 +44,18 @@ type AthleteUpdateRequest struct {
 	AthleteCreateRequest
 }
 
+type Status string
+
+const (
+	NYS Status = "not yet started"
+	RUN Status = "running"
+	FIN Status = "finished"
+	DSQ Status = "disqualified"
+	QRT Status = "qurantine"
+	DNS Status = "pre-race withdrawal"
+	DNF Status = "withdrawn during race"
+)
+
 func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 	if req.RaceID == uuid.Nil {
 		return nil, fmt.Errorf("athlete race must be assigned")

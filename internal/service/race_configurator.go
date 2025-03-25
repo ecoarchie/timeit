@@ -60,7 +60,7 @@ func (rs RaceService) GetEventIDsWithWaveStarted(ctx context.Context, raceID uui
 func (rs RaceService) CreateRace(ctx context.Context, req *dto.RaceDTO, v *validator.Validator) (*entity.Race, error) {
 	r := entity.NewRace(req, v)
 	if !v.Valid() {
-		return nil, nil
+		return nil, validator.ErrValidation
 	}
 	err := rs.repo.SaveRaceInfo(ctx, r)
 	if err != nil {
@@ -81,16 +81,17 @@ func (rs RaceService) GetRaceConfig(ctx context.Context, raceID uuid.UUID) (*ent
 	return rconfig, nil
 }
 
+// FIXME return ErrValidation when v is not Valid
 func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceModelDTO, v *validator.Validator) error {
 	race := entity.NewRace(rc.RaceDTO, v)
 	if !v.Valid() {
-		return fmt.Errorf("save race config validation error: race info")
+		return validator.ErrValidation
 	}
 
 	v.Check(len(rc.TimeReaders) != 0, "time readers", "race must have at least one time reader")
 	// no point for further validation since there are no time readers
 	if !v.Valid() {
-		return fmt.Errorf("save race config validation error: no time readers")
+		return validator.ErrValidation
 	}
 
 	timeReaders := make([]*entity.TimeReader, 0, len(rc.TimeReaders))
@@ -98,7 +99,7 @@ func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceModelDTO, 
 	for _, tr := range rc.TimeReaders {
 		timeReader := entity.NewTimeReader(tr, v)
 		if !v.Valid() {
-			return fmt.Errorf("save race config validation error: time_reader: %s", tr.ID.String())
+			return validator.ErrValidation
 		}
 		timeReadersNames = append(timeReadersNames, tr.ReaderName)
 		timeReaders = append(timeReaders, timeReader)
@@ -109,7 +110,7 @@ func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceModelDTO, 
 	for _, e := range rc.Events {
 		event := entity.NewEvent(e.EventDTO, e.Splits, rc.TimeReaders, e.Waves, e.Categories, v)
 		if !v.Valid() {
-			return fmt.Errorf("save race config validation error: event: %s", e.ID.String())
+			return validator.ErrValidation
 		}
 		events = append(events, event)
 	}

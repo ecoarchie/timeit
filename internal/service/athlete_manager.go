@@ -34,6 +34,7 @@ type AthleteRepo interface {
 	GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.Split, error)
 	SaveAthleteSplits(ctx context.Context, as []database.CreateAthleteSplitsParams) error
 	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
+	SaveBulkAthleteSplits(ctx context.Context, raceID, eventID uuid.UUID, as []database.CreateAthleteSplitsParams) error
 }
 
 const TimeFormatDDMMYYYY = "02.01.2006"
@@ -202,6 +203,7 @@ func (as *AthleteService) FromCSVtoRequestAthlete(ctx context.Context, raceID uu
 			dob = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
 		}
 		gender := entity.GenderFrom(a.Gender)
+
 		// assign categoryID
 		categoryIdx := slices.IndexFunc(raceModel.Events[eventIdx].Categories, func(c *entity.Category) bool {
 			return c.Valid(gender, dob)

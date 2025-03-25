@@ -2,6 +2,7 @@ package httpv1
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -142,31 +143,32 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 	err := readJSON(w, r, &dto)
 	if err != nil {
 		mes := "error parsing new race form"
-		rr.log.Error(mes, err)
+		rr.log.Error(mes, "error", err)
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	v := validator.New()
 	race, err := rr.conf.CreateRace(context.Background(), dto, v)
 	if err != nil {
-		rr.log.Error("error creating race", err)
+		rr.log.Error("error creating race", "error", err)
+		if errors.Is(err, validator.ErrValidation) {
+			rr.log.Error("error validating race config to save")
+			failedValidationResponse(w, v.Errors)
+			return
+		}
 		serverErrorResponse(w, err)
-		return
-	}
-	if !v.Valid() {
-		rr.log.Error("error validating race config to save")
-		failedValidationResponse(w, v.Errors)
 		return
 	}
 	writeJSON(w, http.StatusOK, race, nil)
 }
 
+// TODO if event already exists then reassign categories and recalculate results
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	var raceConfig *dto.RaceModelDTO
 	err := readJSON(w, r, &raceConfig)
 	if err != nil {
 		mes := "error parsing race config form data"
-		rr.log.Error(mes, err)
+		rr.log.Error(mes, "error", err.Error())
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -183,7 +185,11 @@ func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		mes := "error saving race config"
 		rr.log.Error(mes, "race config", err)
-		failedValidationResponse(w, v.Errors)
+		if errors.Is(err, validator.ErrValidation) {
+			failedValidationResponse(w, v.Errors)
+			return
+		}
+		serverErrorResponse(w, err)
 		return
 	}
 	rr.log.Info("Config for race saved")
