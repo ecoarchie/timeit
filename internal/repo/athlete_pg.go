@@ -10,6 +10,7 @@ import (
 	"github.com/ecoarchie/timeit/pkg/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ParticipantQuery interface {
@@ -33,6 +34,7 @@ type ParticipantQuery interface {
 	AddChipBibBulk(ctx context.Context, arg []database.AddChipBibBulkParams) (int64, error)
 	AddEventAthleteBulk(ctx context.Context, arg []database.AddEventAthleteBulkParams) (int64, error)
 	GetSplitsForRace(ctx context.Context, raceID uuid.UUID) ([]database.Split, error)
+	SetStatus(ctx context.Context, arg database.SetStatusParams) error
 	WithTx(tx pgx.Tx) *database.Queries
 }
 
@@ -351,27 +353,27 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.
 				ats.gun_time,
 				ats.net_time,
 				CASE
-					WHEN ss.status_id IN (1, 2) and a.gender <> 'unknown' THEN
+					WHEN ss.status_id IN (2, 3) and a.gender <> 'unknown' THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.gun_time ASC)
 				END AS gun_rank_gender,
 				CASE 
-							WHEN ea.category_id IS NOT NULL AND ss.status_id IN (1, 2) THEN
+							WHEN ea.category_id IS NOT NULL AND ss.status_id IN (2, 3) THEN
 							RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ea.category_id, ss.status_id ORDER BY ats.gun_time ASC) 
 				END AS gun_rank_category,
 				CASE
-					WHEN ss.status_id IN (1, 2) THEN
+					WHEN ss.status_id IN (2, 3) THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ss.status_id ORDER BY ats.gun_time ASC)
 				END AS gun_rank_overall,
 				CASE
-					WHEN ss.status_id IN (1, 2) and a.gender <> 'unknown' THEN
+					WHEN ss.status_id IN (2, 3) and a.gender <> 'unknown' THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.net_time ASC)
 				END AS net_rank_gender,
 				CASE 
-						WHEN ea.category_id IS NOT NULL AND ss.status_id IN (1, 2) THEN
+						WHEN ea.category_id IS NOT NULL AND ss.status_id IN (2, 3) THEN
 						RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ea.category_id, ss.status_id ORDER BY ats.net_time ASC) 
 				END AS net_rank_category,
 				CASE
-					WHEN ss.status_id IN (1, 2) THEN
+					WHEN ss.status_id IN (2, 3) THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ss.status_id ORDER BY ats.net_time ASC)
 				END AS net_rank_overall
 			from athlete_split_tmp ats
@@ -463,4 +465,62 @@ func (ar *AthleteRepoPG) GetRecordsAndSplitsForEventAthlete(ctx context.Context,
 	}
 
 	return records, splits, nil
+}
+
+func (ar *AthleteRepoPG) UpdateStatus(ctx context.Context, status entity.Status, raceID, eventID, athleteID uuid.UUID) error {
+	var statusID pgtype.Int4
+	switch status {
+	case entity.NYS:
+		statusID = pgtype.Int4{
+			Int32: 1,
+			Valid: true,
+		}
+	case entity.RUN:
+		statusID = pgtype.Int4{
+			Int32: 2,
+			Valid: true,
+		}
+	case entity.FIN:
+		statusID = pgtype.Int4{
+			Int32: 3,
+			Valid: true,
+		}
+	case entity.DSQ:
+		statusID = pgtype.Int4{
+			Int32: 4,
+			Valid: true,
+		}
+	case entity.QRT:
+		statusID = pgtype.Int4{
+			Int32: 5,
+			Valid: true,
+		}
+	case entity.DNS:
+		statusID = pgtype.Int4{
+			Int32: 6,
+			Valid: true,
+		}
+	case entity.DNF:
+		statusID = pgtype.Int4{
+			Int32: 7,
+			Valid: true,
+		}
+	default:
+		statusID = pgtype.Int4{
+			Int32: 1,
+			Valid: true,
+		}
+	}
+
+	sParam := database.SetStatusParams{
+		StatusID:  statusID,
+		AthleteID: athleteID,
+		RaceID:    raceID,
+		EventID:   eventID,
+	}
+	err := ar.q.SetStatus(ctx, sParam)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -65,7 +65,8 @@ func (rs *ResultsService) CalculateSplitResults(ctx context.Context, raceID uuid
 	return nil
 }
 
-// TODO
+// FIXME if raw reader records for single athlete are all deleted - previously saved athlete splits in db persist
+// but must be deleted. As an option - delete athlete split when raw is disabled.
 func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error) {
 	start := time.Now()
 	recs, splits, err := rs.AthleteRepo.GetRecordsAndSplitsForEventAthlete(ctx, raceID, eventID)
@@ -87,15 +88,28 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 	// start = time.Now()
 	for _, r := range recs {
 		if len(r.RrTod) == 0 {
+			if entity.ValidStatusTransition(entity.Status(r.StatusFull), entity.NYS) {
+				err := rs.AthleteRepo.UpdateStatus(ctx, entity.NYS, raceID, eventID, r.AthleteID)
+				if err != nil {
+					fmt.Println("error updating status for empty records athlete")
+					return nil, err
+				}
+			}
 			continue
 		}
 		// start = time.Now()
-		res, err := calculateSplitResultForSingleAthlete(r, splits, startSplit)
+		res, potentialStatus, err := calculateSplitResultForSingleAthlete(r, splits, startSplit)
 		if err != nil {
 			fmt.Println("Error getting result for single athlete: ", err)
 			return nil, err
 		}
-		// FIXME apply status change if applicable
+		if entity.ValidStatusTransition(entity.Status(r.StatusFull), potentialStatus) {
+			err = rs.AthleteRepo.UpdateStatus(ctx, potentialStatus, raceID, eventID, r.AthleteID)
+			if err != nil {
+				fmt.Println("error updating status after split calculation")
+				return nil, err
+			}
+		}
 		// fmt.Printf("Time for calculating results for single athleteID = %v is %v\n", r.AthleteID, time.Since(start))
 		allRecords = append(allRecords, res...)
 	}
@@ -129,11 +143,12 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 	return allRecords, nil
 }
 
-func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, error) {
+func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, entity.Status, error) {
 	// create slice for athlete's splits which will be populated further
 	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
 	athleteResultsMap := make(map[entity.SplitID]*entity.AthleteSplit, len(splits))
 	// fmt.Printf("Check Athlete with ID: %v\n", r.AthleteID)
+	currentStatus := entity.Status(r.StatusFull)
 
 	for _, rec := range r.RrTod {
 		// iterate over splits for this event to find valid split for record's tod
@@ -175,11 +190,17 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 				}
 				athleteResultsMap[s.ID] = res
 				singleAthleteRecords[j] = res
+
+				if s.Type == entity.SplitTypeFinish {
+					currentStatus = entity.FIN
+				} else {
+					currentStatus = entity.RUN
+				}
 				continue
 			}
 		}
 	}
-	return singleAthleteRecords, nil
+	return singleAthleteRecords, currentStatus, nil
 }
 
 func (rs ResultsService) CalculateRanks(ctx context.Context, eventResults []*entity.AthleteSplit) {

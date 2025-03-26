@@ -91,6 +91,7 @@ select
 	cb.chip,
 	ea.category_id,
 	a.gender,
+	s.status_full,
 	w.start_time as wave_start,
 	(select array_agg(row(tr.id, rr.tod)::rr_tod order by rr.tod)::rr_tod[]
 	from
@@ -103,6 +104,7 @@ select
 		and rr.chip = cb.chip
 		and rr.can_use is true) as rr_tod
 	from event_athlete ea
+	join statuses s on ea.status_id = s.status_id
 	join waves w on w.race_id = ea.race_id and w.event_id = ea.event_id  and w.id = ea.wave_id
 	join chip_bib cb on cb.race_id = ea.race_id and cb.event_id = ea.event_id and cb.bib = ea.bib
 	join athletes a on a.id = ea.athlete_id and a.race_id = ea.race_id
@@ -122,6 +124,7 @@ type GetEventAthleteRecordsCRow struct {
 	Chip       int32
 	CategoryID uuid.NullUUID
 	Gender     CategoryGender
+	StatusFull string
 	WaveStart  pgtype.Timestamp
 	RrTod      []entity.RecordTOD
 }
@@ -141,6 +144,7 @@ func (q *Queries) GetEventAthleteRecordsC(ctx context.Context, arg GetEventAthle
 			&i.Chip,
 			&i.CategoryID,
 			&i.Gender,
+			&i.StatusFull,
 			&i.WaveStart,
 			&i.RrTod,
 		); err != nil {
@@ -152,4 +156,27 @@ func (q *Queries) GetEventAthleteRecordsC(ctx context.Context, arg GetEventAthle
 		return nil, err
 	}
 	return items, nil
+}
+
+const setStatus = `-- name: SetStatus :exec
+UPDATE event_athlete
+SET status_id = $1
+WHERE athlete_id = $2 AND race_id = $3 AND event_id = $4
+`
+
+type SetStatusParams struct {
+	StatusID  pgtype.Int4
+	AthleteID uuid.UUID
+	RaceID    uuid.UUID
+	EventID   uuid.UUID
+}
+
+func (q *Queries) SetStatus(ctx context.Context, arg SetStatusParams) error {
+	_, err := q.db.Exec(ctx, setStatus,
+		arg.StatusID,
+		arg.AthleteID,
+		arg.RaceID,
+		arg.EventID,
+	)
+	return err
 }
