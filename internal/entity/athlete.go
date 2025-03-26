@@ -56,6 +56,29 @@ const (
 	DNF Status = "withdrawn during race"
 )
 
+var StatusAutoTransitionMap = map[Status][]Status{
+	NYS: {RUN, FIN},
+	RUN: {FIN, NYS},
+	FIN: {RUN, NYS},
+	DSQ: {},
+	QRT: {},
+	DNS: {},
+	DNF: {},
+}
+
+func Contains(statuses []Status, status Status) bool {
+	for _, s := range statuses {
+		if s == status {
+			return true
+		}
+	}
+	return false
+}
+
+func ValidStatusTransition(src Status, dst Status) bool {
+	return Contains(StatusAutoTransitionMap[src], dst)
+}
+
 func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {
 	if req.RaceID == uuid.Nil {
 		return nil, fmt.Errorf("athlete race must be assigned")

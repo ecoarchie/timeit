@@ -34,7 +34,7 @@ type AthleteRepo interface {
 	GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.Split, error)
 	SaveAthleteSplits(ctx context.Context, as []database.CreateAthleteSplitsParams) error
 	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
-	SaveBulkAthleteSplits(ctx context.Context, raceID, eventID uuid.UUID, as []database.CreateAthleteSplitsParams) error
+	SaveBulkAthleteSplits(ctx context.Context, raceID uuid.UUID, as []*entity.AthleteSplit) error
 }
 
 const TimeFormatDDMMYYYY = "02.01.2006"

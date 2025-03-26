@@ -308,7 +308,7 @@ func (ar *AthleteRepoPG) SaveAthleteSplits(ctx context.Context, as []database.Cr
 	return nil
 }
 
-func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID, eventID uuid.UUID, as []database.CreateAthleteSplitsParams) error {
+func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.UUID, as []*entity.AthleteSplit) error {
 	tx, err := ar.pg.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -329,7 +329,9 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID, even
 
 	var linkedParams [][]interface{}
 	for _, p := range as {
-		linkedParams = append(linkedParams, []interface{}{p.RaceID, p.EventID, p.SplitID, p.AthleteID, p.Tod, p.GunTime, p.NetTime})
+		if p != nil {
+			linkedParams = append(linkedParams, []interface{}{p.RaceID, p.EventID, p.SplitID, p.AthleteID, p.TOD, p.GunTime, p.NetTime})
+		}
 	}
 	_, err = tx.CopyFrom(ctx, []string{"athlete_split_tmp"}, []string{"race_id", "event_id", "split_id", "athlete_id", "tod", "gun_time", "net_time"}, pgx.CopyFromRows(linkedParams))
 	if err != nil {
@@ -349,27 +351,27 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID, even
 				ats.gun_time,
 				ats.net_time,
 				CASE
-					WHEN ss.status_id = 1 THEN
+					WHEN ss.status_id IN (1, 2) and a.gender <> 'unknown' THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.gun_time ASC)
 				END AS gun_rank_gender,
 				CASE 
-							WHEN ea.category_id IS NOT NULL AND ss.status_id = 1 THEN
+							WHEN ea.category_id IS NOT NULL AND ss.status_id IN (1, 2) THEN
 							RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ea.category_id, ss.status_id ORDER BY ats.gun_time ASC) 
 				END AS gun_rank_category,
 				CASE
-					WHEN ss.status_id = 1 THEN
+					WHEN ss.status_id IN (1, 2) THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ss.status_id ORDER BY ats.gun_time ASC)
 				END AS gun_rank_overall,
 				CASE
-					WHEN ss.status_id = 1 THEN
+					WHEN ss.status_id IN (1, 2) and a.gender <> 'unknown' THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.net_time ASC)
 				END AS net_rank_gender,
 				CASE 
-						WHEN ea.category_id IS NOT NULL AND ss.status_id = 1 THEN
+						WHEN ea.category_id IS NOT NULL AND ss.status_id IN (1, 2) THEN
 						RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ea.category_id, ss.status_id ORDER BY ats.net_time ASC) 
 				END AS net_rank_category,
 				CASE
-					WHEN ss.status_id = 1 THEN
+					WHEN ss.status_id IN (1, 2) THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, ss.status_id ORDER BY ats.net_time ASC)
 				END AS net_rank_overall
 			from athlete_split_tmp ats
@@ -379,7 +381,6 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID, even
 			join splits s on s.id = ats.split_id and s.race_id = ats.race_id and s.event_id = ats.event_id
 			where
 				ats.race_id = $1
-				and ats.event_id = $2
 			order by
 				ats.gun_time
 		) ats
@@ -395,10 +396,10 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID, even
 			net_rank_category = ats.net_rank_category,
 			net_rank_overall = ats.net_rank_overall
 		when not matched then insert 
-			(tod, gun_time, net_time, gun_rank_gender, gun_rank_category, gun_rank_overall, net_rank_gender, net_rank_category, net_rank_overall)
-			values (ats.tod, ats.gun_time, ats.net_time, ats.gun_rank_gender, ats.gun_rank_category, ats.gun_rank_overall, ats.net_rank_gender, ats.net_rank_category, ats.net_rank_overall)
+			(race_id, event_id, split_id, athlete_id, tod, gun_time, net_time, gun_rank_gender, gun_rank_category, gun_rank_overall, net_rank_gender, net_rank_category, net_rank_overall)
+			values (ats.race_id, ats.event_id, ats.split_id, ats.athlete_id, ats.tod, ats.gun_time, ats.net_time, ats.gun_rank_gender, ats.gun_rank_category, ats.gun_rank_overall, ats.net_rank_gender, ats.net_rank_category, ats.net_rank_overall)
 	`
-	_, err = tx.Exec(ctx, rankSql, raceID, eventID)
+	_, err = tx.Exec(ctx, rankSql, raceID)
 	if err != nil {
 		fmt.Println("Error executing rank query: ", err)
 		return err

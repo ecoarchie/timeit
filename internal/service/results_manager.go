@@ -9,7 +9,6 @@ import (
 
 	"github.com/ecoarchie/timeit/internal/database"
 	"github.com/ecoarchie/timeit/internal/entity"
-	"github.com/ecoarchie/timeit/pkg/pgxmapper"
 	"github.com/google/uuid"
 )
 
@@ -42,25 +41,27 @@ func (rs *ResultsService) CalculateSplitResults(ctx context.Context, raceID uuid
 	if len(IDs) == 0 {
 		return nil
 	}
-	// FIXME
-	// m := make(map[EventID][]*entity.AthleteSplit)
+
+	var allRecords []*entity.AthleteSplit
 	for _, eventID := range IDs {
 		eventResults, err := rs.CalculateSplitResultsForEvent(ctx, raceID, eventID)
 		if err != nil {
 			return err
 		}
+		allRecords = append(allRecords, eventResults...)
 		for _, e := range eventResults {
 			if e == nil {
 				fmt.Println("WE HAVE NIL HERE")
 			}
 		}
-		// rs.CalculateRanks(ctx, eventResults)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// m[eventID] = res
-		// fmt.Println("Res: ", res)
 	}
+	start := time.Now()
+	err = rs.AthleteRepo.SaveBulkAthleteSplits(ctx, raceID, allRecords)
+	if err != nil {
+		fmt.Println("error saving bulk athlete split for the whole race")
+		return err
+	}
+	fmt.Printf("saving whole bulk athlete splits took %v\n", time.Since(start))
 	return nil
 }
 
@@ -69,6 +70,7 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 	start := time.Now()
 	recs, splits, err := rs.AthleteRepo.GetRecordsAndSplitsForEventAthlete(ctx, raceID, eventID)
 	if err != nil {
+		fmt.Println("error getting records and splits for event athlete: ", err)
 		return nil, err
 	}
 	fmt.Printf("Time for getting records for eventID = %v is %v\n", eventID, time.Since(start))
@@ -81,8 +83,8 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 		}
 	}
 
-	allRecords := []*entity.AthleteSplit{}
-	start = time.Now()
+	var allRecords []*entity.AthleteSplit
+	// start = time.Now()
 	for _, r := range recs {
 		if len(r.RrTod) == 0 {
 			continue
@@ -93,41 +95,37 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 			fmt.Println("Error getting result for single athlete: ", err)
 			return nil, err
 		}
+		// FIXME apply status change if applicable
 		// fmt.Printf("Time for calculating results for single athleteID = %v is %v\n", r.AthleteID, time.Since(start))
 		allRecords = append(allRecords, res...)
 	}
-	fmt.Printf("Time for calculating ALL records for event = %v is %v\n", eventID, time.Since(start))
-
-	// Calculate ranks within event
-	// rs.CalculateRanks(ctx, allRecords)
+	// fmt.Printf("Time for calculating ALL records for event = %v is %v\n", eventID, time.Since(start))
 
 	// saving calculated athlete splits results into db
-	start = time.Now()
-	saveAthleteSplitsParams := []database.CreateAthleteSplitsParams{}
-	for _, ar := range allRecords {
-		if ar == nil {
-			continue
-		}
-		saveAthleteSplitsParams = append(saveAthleteSplitsParams, database.CreateAthleteSplitsParams{
-			RaceID:    ar.RaceID,
-			EventID:   ar.EventID,
-			SplitID:   ar.SplitID,
-			AthleteID: ar.AthleteID,
-			Tod:       pgxmapper.TimeToPgxTimestamp(ar.TOD),
-			GunTime:   pgxmapper.DurationToPgxInterval(ar.GunTime),
-			NetTime:   pgxmapper.DurationToPgxInterval(ar.NetTime),
-		})
-	}
+	// start = time.Now()
+	// saveAthleteSplitsParams := []database.CreateAthleteSplitsParams{}
+	// for _, ar := range allRecords {
+	// 	if ar == nil {
+	// 		continue
+	// 	}
+	// 	saveAthleteSplitsParams = append(saveAthleteSplitsParams, database.CreateAthleteSplitsParams{
+	// 		RaceID:    ar.RaceID,
+	// 		EventID:   ar.EventID,
+	// 		SplitID:   ar.SplitID,
+	// 		AthleteID: ar.AthleteID,
+	// 		Tod:       pgxmapper.TimeToPgxTimestamp(ar.TOD),
+	// 		GunTime:   pgxmapper.DurationToPgxInterval(ar.GunTime),
+	// 		NetTime:   pgxmapper.DurationToPgxInterval(ar.NetTime),
+	// 	})
+	// }
 	// OLD method - save athlete splits one by one
 	// err = rs.AthleteRepo.SaveAthleteSplits(ctx, saveAthleteSplitsParams)
 
-	// NEW METHOD - insert BULK athlete splits with COPYFROM protocol and calculate rankings inside DB
-	err = rs.AthleteRepo.SaveBulkAthleteSplits(ctx, raceID, eventID, saveAthleteSplitsParams)
-	fmt.Printf("Time for inserting ALL athlete splits results is %v\n", time.Since(start))
-	if err != nil {
-		fmt.Println("Error inserting athlete splits", err)
-		return nil, err
-	}
+	// fmt.Printf("Time for inserting ALL athlete splits results is %v\n", time.Since(start))
+	// if err != nil {
+	// 	fmt.Println("Error inserting athlete splits", err)
+	// 	return nil, err
+	// }
 	return allRecords, nil
 }
 
@@ -138,7 +136,6 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 	// fmt.Printf("Check Athlete with ID: %v\n", r.AthleteID)
 
 	for _, rec := range r.RrTod {
-		// recReader := recTOD.ReaderID
 		// iterate over splits for this event to find valid split for record's tod
 		// fmt.Printf("Checking TOD %v\n", recTOD)
 		for j, s := range splits {
@@ -157,7 +154,6 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 
 			// for type 'start' existing results must be overwritten, for 'standard' and 'finish' existing must be kept unchanged
 			if !exist || s.Type == entity.SplitTypeStart {
-				// FIXME add checking if start type split is not configured or missed at all
 				var netTime time.Duration
 				if s.Type != entity.SplitTypeStart {
 					if startSplit != nil && singleAthleteRecords[0] != nil {
