@@ -319,7 +319,7 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.
 
 	tempSql := `
 		CREATE TEMPORARY TABLE athlete_split_tmp (
-			LIKE athlete_split INCLUDING ALL
+			LIKE athlete_split INCLUDING ALL, visited BOOLEAN
 		) ON COMMIT DROP;
 	`
 
@@ -332,10 +332,10 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.
 	var linkedParams [][]interface{}
 	for _, p := range as {
 		if p != nil {
-			linkedParams = append(linkedParams, []interface{}{p.RaceID, p.EventID, p.SplitID, p.AthleteID, p.TOD, p.GunTime, p.NetTime})
+			linkedParams = append(linkedParams, []interface{}{p.RaceID, p.EventID, p.SplitID, p.AthleteID, p.TOD, p.GunTime, p.NetTime, p.Visited})
 		}
 	}
-	_, err = tx.CopyFrom(ctx, []string{"athlete_split_tmp"}, []string{"race_id", "event_id", "split_id", "athlete_id", "tod", "gun_time", "net_time"}, pgx.CopyFromRows(linkedParams))
+	_, err = tx.CopyFrom(ctx, []string{"athlete_split_tmp"}, []string{"race_id", "event_id", "split_id", "athlete_id", "tod", "gun_time", "net_time", "visited"}, pgx.CopyFromRows(linkedParams))
 	if err != nil {
 		fmt.Println("Error executing copyfrom athlete splits: ", err)
 		return err
@@ -352,6 +352,7 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.
 				ats.tod,
 				ats.gun_time,
 				ats.net_time,
+				ats.visited,
 				CASE
 					WHEN ss.status_id IN (2, 3) and a.gender <> 'unknown' THEN
 					RANK() OVER (PARTITION BY ats.race_id, ats.event_id, ats.split_id, s.split_type, a.gender, ss.status_id ORDER BY ats.gun_time ASC)
@@ -387,6 +388,8 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.
 				ats.gun_time
 		) ats
 		on asl.race_id = ats.race_id and asl.event_id = ats.event_id and asl.split_id = ats.split_id and asl.athlete_id = ats.athlete_id
+		when matched and ats.visited is FALSE then
+			DELETE
 		when matched then update set
 			tod = ats.tod,
 			gun_time = ats.gun_time,
@@ -397,6 +400,7 @@ func (ar *AthleteRepoPG) SaveBulkAthleteSplits(ctx context.Context, raceID uuid.
 			net_rank_gender = ats.net_rank_gender,
 			net_rank_category = ats.net_rank_category,
 			net_rank_overall = ats.net_rank_overall
+		when not matched and ats.visited is FALSE then DO NOTHING 
 		when not matched then insert 
 			(race_id, event_id, split_id, athlete_id, tod, gun_time, net_time, gun_rank_gender, gun_rank_category, gun_rank_overall, net_rank_gender, net_rank_category, net_rank_overall)
 			values (ats.race_id, ats.event_id, ats.split_id, ats.athlete_id, ats.tod, ats.gun_time, ats.net_time, ats.gun_rank_gender, ats.gun_rank_category, ats.gun_rank_overall, ats.net_rank_gender, ats.net_rank_category, ats.net_rank_overall)

@@ -65,8 +65,6 @@ func (rs *ResultsService) CalculateSplitResults(ctx context.Context, raceID uuid
 	return nil
 }
 
-// FIXME if raw reader records for single athlete are all deleted - previously saved athlete splits in db persist
-// but must be deleted. As an option - delete athlete split when raw is disabled.
 func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, raceID, eventID uuid.UUID) ([]*entity.AthleteSplit, error) {
 	start := time.Now()
 	recs, splits, err := rs.AthleteRepo.GetRecordsAndSplitsForEventAthlete(ctx, raceID, eventID)
@@ -87,17 +85,6 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 	var allRecords []*entity.AthleteSplit
 	// start = time.Now()
 	for _, r := range recs {
-		if len(r.RrTod) == 0 {
-			if entity.ValidStatusTransition(entity.Status(r.StatusFull), entity.NYS) {
-				err := rs.AthleteRepo.UpdateStatus(ctx, entity.NYS, raceID, eventID, r.AthleteID)
-				if err != nil {
-					fmt.Println("error updating status for empty records athlete")
-					return nil, err
-				}
-			}
-			continue
-		}
-		// start = time.Now()
 		res, potentialStatus, err := calculateSplitResultForSingleAthlete(r, splits, startSplit)
 		if err != nil {
 			fmt.Println("Error getting result for single athlete: ", err)
@@ -110,49 +97,23 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 				return nil, err
 			}
 		}
-		// fmt.Printf("Time for calculating results for single athleteID = %v is %v\n", r.AthleteID, time.Since(start))
 		allRecords = append(allRecords, res...)
 	}
-	// fmt.Printf("Time for calculating ALL records for event = %v is %v\n", eventID, time.Since(start))
-
-	// saving calculated athlete splits results into db
-	// start = time.Now()
-	// saveAthleteSplitsParams := []database.CreateAthleteSplitsParams{}
-	// for _, ar := range allRecords {
-	// 	if ar == nil {
-	// 		continue
-	// 	}
-	// 	saveAthleteSplitsParams = append(saveAthleteSplitsParams, database.CreateAthleteSplitsParams{
-	// 		RaceID:    ar.RaceID,
-	// 		EventID:   ar.EventID,
-	// 		SplitID:   ar.SplitID,
-	// 		AthleteID: ar.AthleteID,
-	// 		Tod:       pgxmapper.TimeToPgxTimestamp(ar.TOD),
-	// 		GunTime:   pgxmapper.DurationToPgxInterval(ar.GunTime),
-	// 		NetTime:   pgxmapper.DurationToPgxInterval(ar.NetTime),
-	// 	})
-	// }
-	// OLD method - save athlete splits one by one
-	// err = rs.AthleteRepo.SaveAthleteSplits(ctx, saveAthleteSplitsParams)
-
-	// fmt.Printf("Time for inserting ALL athlete splits results is %v\n", time.Since(start))
-	// if err != nil {
-	// 	fmt.Println("Error inserting athlete splits", err)
-	// 	return nil, err
-	// }
 	return allRecords, nil
 }
 
 func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, entity.Status, error) {
-	// create slice for athlete's splits which will be populated further
-	singleAthleteRecords := make([]*entity.AthleteSplit, len(splits))
+	// create slice for athlete's splits with zero times values and visited is false
+	singleAthleteRecords := entity.NewAthleteSplitsTemlate(splits, r.AthleteID, r.CategoryID, entity.CategoryGender(r.Gender))
 	athleteResultsMap := make(map[entity.SplitID]*entity.AthleteSplit, len(splits))
-	// fmt.Printf("Check Athlete with ID: %v\n", r.AthleteID)
 	currentStatus := entity.Status(r.StatusFull)
+
+	if len(r.RrTod) == 0 {
+		return singleAthleteRecords, currentStatus, nil
+	}
 
 	for _, rec := range r.RrTod {
 		// iterate over splits for this event to find valid split for record's tod
-		// fmt.Printf("Checking TOD %v\n", recTOD)
 		for j, s := range splits {
 			// check if split reader id matches record's reader name
 			if s.TimeReaderID != rec.ReaderID {
@@ -177,19 +138,11 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 						netTime = rec.TOD.Sub(r.WaveStart.Time)
 					}
 				}
-				res := &entity.AthleteSplit{
-					RaceID:     s.RaceID,
-					EventID:    s.EventID,
-					AthleteID:  r.AthleteID,
-					SplitID:    s.ID,
-					TOD:        rec.TOD,
-					GunTime:    rec.TOD.Sub(r.WaveStart.Time),
-					NetTime:    netTime,
-					Gender:     entity.CategoryGender(r.Gender),
-					CategoryID: r.CategoryID,
-				}
-				athleteResultsMap[s.ID] = res
-				singleAthleteRecords[j] = res
+				singleAthleteRecords[j].TOD = rec.TOD
+				singleAthleteRecords[j].GunTime = rec.TOD.Sub(r.WaveStart.Time)
+				singleAthleteRecords[j].NetTime = netTime
+				singleAthleteRecords[j].Visited = true
+				athleteResultsMap[s.ID] = singleAthleteRecords[j]
 
 				if s.Type == entity.SplitTypeFinish {
 					currentStatus = entity.FIN

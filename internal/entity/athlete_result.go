@@ -22,6 +22,7 @@ type AthleteSplit struct {
 	NetRankOverall  int
 	NetRankGender   int
 	NetRankCategory int
+	Visited         bool
 }
 
 type SplitData struct {
@@ -42,6 +43,21 @@ type AthleteSplitResults struct {
 	Gender     CategoryGender
 	CategoryID uuid.NullUUID
 	Splits     map[string]SplitData
+}
+
+func NewAthleteSplitsTemlate(ss []*Split, athleteID uuid.UUID, categoryID uuid.NullUUID, gender CategoryGender) []*AthleteSplit {
+	result := make([]*AthleteSplit, len(ss))
+	for i, s := range ss {
+		result[i] = &AthleteSplit{
+			RaceID:     s.RaceID,
+			EventID:    s.EventID,
+			AthleteID:  athleteID,
+			SplitID:    s.ID,
+			Gender:     gender,
+			CategoryID: categoryID,
+		}
+	}
+	return result
 }
 
 // func NewAthleteResults(p *Athlete) *AthleteResult {
