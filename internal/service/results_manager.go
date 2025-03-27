@@ -132,7 +132,7 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 			if !exist || s.Type == entity.SplitTypeStart {
 				var netTime time.Duration
 				if s.Type != entity.SplitTypeStart {
-					if startSplit != nil && singleAthleteRecords[0] != nil {
+					if startSplit != nil && singleAthleteRecords[0].Visited {
 						netTime = rec.TOD.Sub(singleAthleteRecords[0].TOD)
 					} else {
 						netTime = rec.TOD.Sub(r.WaveStart.Time)
@@ -146,10 +146,10 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 
 				if s.Type == entity.SplitTypeFinish {
 					currentStatus = entity.FIN
-				} else {
-					currentStatus = entity.RUN
+					// no need to calculate records further since we found the finish record
+					break
 				}
-				continue
+				currentStatus = entity.RUN
 			}
 		}
 	}
