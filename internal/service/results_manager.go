@@ -75,20 +75,29 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 	fmt.Printf("Time for getting records for eventID = %v is %v\n", eventID, time.Since(start))
 	var startSplit *entity.Split
 	for _, s := range splits {
-		fmt.Printf("splid ID: %v, name: %s, prevLap: %v, min_time: %v, max_time: %v, min_lap_time: %v\n", s.ID, s.Name, s.PreviousLapSplitID, s.MinTime, s.MaxTime, s.MinLapTime)
 		if s.Type == entity.SplitTypeStart {
 			startSplit = s
 			break
 		}
 	}
 
+	manualAthleteSplits, err := rs.AthleteRepo.GetManualAthleteSplits(ctx, raceID, eventID)
+	if err != nil {
+		fmt.Println("Error getting manual")
+		return nil, err
+	}
+	fmt.Println("manual: ", manualAthleteSplits)
+
 	var allRecords []*entity.AthleteSplit
 	// start = time.Now()
 	for _, r := range recs {
-		res, potentialStatus, err := calculateSplitResultForSingleAthlete(r, splits, startSplit)
+		athleteSplits, potentialStatus, err := calculateSplitResultForSingleAthlete(r, splits, startSplit)
 		if err != nil {
 			fmt.Println("Error getting result for single athlete: ", err)
 			return nil, err
+		}
+		if mans, ok := manualAthleteSplits[r.AthleteID]; ok {
+			replaceWithManual(athleteSplits, mans)
 		}
 		if entity.ValidStatusTransition(entity.Status(r.StatusFull), potentialStatus) {
 			err = rs.AthleteRepo.UpdateStatus(ctx, potentialStatus, raceID, eventID, r.AthleteID)
@@ -97,20 +106,32 @@ func (rs ResultsService) CalculateSplitResultsForEvent(ctx context.Context, race
 				return nil, err
 			}
 		}
-		allRecords = append(allRecords, res...)
+		allRecords = append(allRecords, athleteSplits...)
 	}
 	return allRecords, nil
+}
+
+func replaceWithManual(original, manual []*entity.AthleteSplit) []*entity.AthleteSplit {
+	fmt.Println("WE HAVE MANUAL")
+	for _, m := range manual {
+		for i, o := range original {
+			if m.SplitID == o.SplitID {
+				original[i] = m
+			}
+		}
+	}
+	return original
 }
 
 func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow, splits []*entity.Split, startSplit *entity.Split) ([]*entity.AthleteSplit, entity.Status, error) {
 	// create slice for athlete's splits with zero times values and visited is false
 	singleAthleteRecords := entity.NewAthleteSplitsTemlate(splits, r.AthleteID, r.CategoryID, entity.CategoryGender(r.Gender))
+	if len(r.RrTod) == 0 {
+		return singleAthleteRecords, entity.NYS, nil
+	}
+
 	athleteResultsMap := make(map[entity.SplitID]*entity.AthleteSplit, len(splits))
 	currentStatus := entity.Status(r.StatusFull)
-
-	if len(r.RrTod) == 0 {
-		return singleAthleteRecords, currentStatus, nil
-	}
 
 	for _, rec := range r.RrTod {
 		// iterate over splits for this event to find valid split for record's tod
@@ -132,7 +153,7 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 			if !exist || s.Type == entity.SplitTypeStart {
 				var netTime time.Duration
 				if s.Type != entity.SplitTypeStart {
-					if startSplit != nil && singleAthleteRecords[0].Visited {
+					if startSplit != nil && singleAthleteRecords[0].IsVisited() {
 						netTime = rec.TOD.Sub(singleAthleteRecords[0].TOD)
 					} else {
 						netTime = rec.TOD.Sub(r.WaveStart.Time)
@@ -141,7 +162,6 @@ func calculateSplitResultForSingleAthlete(r database.GetEventAthleteRecordsCRow,
 				singleAthleteRecords[j].TOD = rec.TOD
 				singleAthleteRecords[j].GunTime = rec.TOD.Sub(r.WaveStart.Time)
 				singleAthleteRecords[j].NetTime = netTime
-				singleAthleteRecords[j].Visited = true
 				athleteResultsMap[s.ID] = singleAthleteRecords[j]
 
 				if s.Type == entity.SplitTypeFinish {

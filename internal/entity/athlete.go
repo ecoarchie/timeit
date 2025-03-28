@@ -2,6 +2,7 @@ package entity
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,17 +67,8 @@ var StatusAutoTransitionMap = map[Status][]Status{
 	DNF: {},
 }
 
-func Contains(statuses []Status, status Status) bool {
-	for _, s := range statuses {
-		if s == status {
-			return true
-		}
-	}
-	return false
-}
-
 func ValidStatusTransition(src Status, dst Status) bool {
-	return Contains(StatusAutoTransitionMap[src], dst)
+	return slices.Contains(StatusAutoTransitionMap[src], dst)
 }
 
 func NewAthlete(req AthleteCreateRequest) (*Athlete, error) {

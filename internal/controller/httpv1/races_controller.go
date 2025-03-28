@@ -162,7 +162,6 @@ func (rr *raceRoutes) createRace(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, race, nil)
 }
 
-// TODO if event already exists then reassign categories and recalculate results
 func (rr *raceRoutes) saveRaceConfig(w http.ResponseWriter, r *http.Request) {
 	var raceConfig *dto.RaceModelDTO
 	err := readJSON(w, r, &raceConfig)

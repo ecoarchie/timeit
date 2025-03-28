@@ -22,7 +22,10 @@ type AthleteSplit struct {
 	NetRankOverall  int
 	NetRankGender   int
 	NetRankCategory int
-	Visited         bool
+}
+
+func (a *AthleteSplit) IsVisited() bool {
+	return !a.TOD.IsZero()
 }
 
 type SplitData struct {

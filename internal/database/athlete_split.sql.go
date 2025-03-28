@@ -42,3 +42,73 @@ func (q *Queries) CreateAthleteSplits(ctx context.Context, arg CreateAthleteSpli
 	)
 	return err
 }
+
+const deleteAthleteSplit = `-- name: DeleteAthleteSplit :exec
+DELETE FROM athlete_split
+WHERE race_id = $1 AND athlete_ID = $2
+`
+
+type DeleteAthleteSplitParams struct {
+	RaceID    uuid.UUID
+	AthleteID uuid.UUID
+}
+
+func (q *Queries) DeleteAthleteSplit(ctx context.Context, arg DeleteAthleteSplitParams) error {
+	_, err := q.db.Exec(ctx, deleteAthleteSplit, arg.RaceID, arg.AthleteID)
+	return err
+}
+
+const getManualAthleteSplits = `-- name: GetManualAthleteSplits :many
+SELECT ast.race_id, ast.event_id, ast.split_id, ast.athlete_id, ast.tod, ast.gun_time, ast.net_time, ea.category_id, a.gender
+FROM athlete_split ast
+join event_athlete ea on ea.athlete_id = ast.athlete_id and ea.race_id = ast.race_id and ea.event_id = ast.event_id
+join athletes a on ea.athlete_id = a.id
+WHERE ast.race_id = $1 AND ast.event_id = $2 AND is_manual IS TRUE
+`
+
+type GetManualAthleteSplitsParams struct {
+	RaceID  uuid.UUID
+	EventID uuid.UUID
+}
+
+type GetManualAthleteSplitsRow struct {
+	RaceID     uuid.UUID
+	EventID    uuid.UUID
+	SplitID    uuid.UUID
+	AthleteID  uuid.UUID
+	Tod        pgtype.Timestamp
+	GunTime    pgtype.Interval
+	NetTime    pgtype.Interval
+	CategoryID uuid.NullUUID
+	Gender     CategoryGender
+}
+
+func (q *Queries) GetManualAthleteSplits(ctx context.Context, arg GetManualAthleteSplitsParams) ([]GetManualAthleteSplitsRow, error) {
+	rows, err := q.db.Query(ctx, getManualAthleteSplits, arg.RaceID, arg.EventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetManualAthleteSplitsRow
+	for rows.Next() {
+		var i GetManualAthleteSplitsRow
+		if err := rows.Scan(
+			&i.RaceID,
+			&i.EventID,
+			&i.SplitID,
+			&i.AthleteID,
+			&i.Tod,
+			&i.GunTime,
+			&i.NetTime,
+			&i.CategoryID,
+			&i.Gender,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

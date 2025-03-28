@@ -118,9 +118,10 @@ func (rs RaceService) SaveRaceConfig(ctx context.Context, rc *dto.RaceModelDTO, 
 	err := rs.repo.SaveRaceConfig(ctx, race, timeReaders, events)
 	if err != nil {
 		const msg = "error saving race to repo"
-		rs.log.Error(msg, err)
+		rs.log.Error(msg, "error", err)
 		return err
 	}
+	// BUG if event already exists then reassign categories and recalculate results
 	return nil
 }
 

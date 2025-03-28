@@ -32,6 +32,7 @@ type AthleteRepo interface {
 	DeleteAthletesForRace(ctx context.Context, raceID uuid.UUID) error
 	DeleteAthletesForRaceWithEventID(ctx context.Context, raceID, eventID uuid.UUID) error
 	GetRecordsAndSplitsForEventAthlete(ctx context.Context, raceID, eventID uuid.UUID) ([]database.GetEventAthleteRecordsCRow, []*entity.Split, error)
+	GetManualAthleteSplits(ctx context.Context, raceID, eventID uuid.UUID) (map[uuid.UUID][]*entity.AthleteSplit, error)
 	SaveAthleteSplits(ctx context.Context, as []database.CreateAthleteSplitsParams) error
 	GetEventIDsWithWavesStarted(ctx context.Context, raceID uuid.UUID) ([]uuid.UUID, error)
 	SaveBulkAthleteSplits(ctx context.Context, raceID uuid.UUID, as []*entity.AthleteSplit) error

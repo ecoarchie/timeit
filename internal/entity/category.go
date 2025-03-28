@@ -71,7 +71,7 @@ func NewCategory(dto *dto.CategoryDTO, eventDate time.Time, v *validator.Validat
 	}
 }
 
-// TODO Write test for it
+// TEST
 func (c *Category) Valid(gender CategoryGender, dob time.Time) bool {
 	return c.Gender == gender && ((dob.Before(c.DateTo) || dob.Equal(c.DateTo)) && (dob.After(c.DateFrom) || dob.Equal(c.DateFrom)))
 }

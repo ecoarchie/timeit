@@ -126,6 +126,7 @@ type AthleteSplit struct {
 	NetRankGender   pgtype.Int4
 	NetRankCategory pgtype.Int4
 	NetRankOverall  pgtype.Int4
+	IsManual        pgtype.Bool
 }
 
 type Category struct {
@@ -195,7 +196,7 @@ type Split struct {
 }
 
 type Status struct {
-	StatusID         int32
+	StatusID         int16
 	StatusFull       string
 	StatusCode       string
 	CanGetRank       bool
